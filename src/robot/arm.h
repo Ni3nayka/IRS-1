@@ -8,9 +8,20 @@ Servo myservo;
 
 int global_state_hight_arm = 1;
 
+void disable(unsigned long int t=0) {
+  if (t<millis()) {
+    myservo.detach();
+    motors.runs(0,0,0,-20); delay(3000);
+    motors.runs();
+    while(1);
+  }
+  
+}
+
 void writeHight(int state, int real_state = -1) {
+  unsigned long int t = millis() + 2000; // timeout
   if (real_state!=-1) global_state_hight_arm = real_state;
-  int POROG = 350;
+  int POROG = 500;
   int PIN = A0;
   if (state==global_state_hight_arm) return;
   bool down_move = state<global_state_hight_arm;
@@ -19,19 +30,19 @@ void writeHight(int state, int real_state = -1) {
   // motors.run(3,20); // вниз
   // motors.run(3,-30); // вверх
 
-  if (down_move) motors.run(3,20); // вниз
-  else motors.run(3,-50); // вверх
+  if (down_move) motors.run(4,-20); // вниз
+  else motors.run(4,60); // вверх
 
-  while (analogRead(PIN)<POROG); // пока черный
+  while (analogRead(PIN)<POROG) disable(t); // пока черный
   delay(50);
-  while (analogRead(PIN)>POROG); // пока белый
-  if (down_move) delay(60);
+  while (analogRead(PIN)>POROG) disable(t); // пока белый
+  if (down_move) delay(200);
   else delay(90);
 
-  if (down_move) motors.run(3,-50);
-  else motors.run(3,50);
+  if (down_move) motors.run(4,50);
+  else motors.run(4,-50);
   delay(50);
-  motors.run(3,0);
+  motors.run(4,0);
 
   global_state_hight_arm = global_state_hight_arm + (int(!down_move)*2-1);
   //if (global_state_hight_arm!=state) 
@@ -57,7 +68,7 @@ int getColor() { //
   }
 }
 
-int readUltrasonar(int pin = 11) {
+int readUltrasonarBasic(int pin = 11) {
   int duration, cm;
 
   pinMode(pin, OUTPUT);
@@ -88,6 +99,12 @@ int readUltrasonar(int pin = 11) {
   // // Задержка между измерениями для корректной работы скеча
   // delay(250);
   cm = constrain(cm,0,100);
-  if (cm<5) cm = 100;
+  if (cm<3) cm = 100;
   return cm;
+}
+
+int readUltrasonar(int pin = 11) {
+  //return (readUltrasonarBasic(pin)+readUltrasonarBasic(pin)+readUltrasonarBasic(pin))/3;
+  return (readUltrasonarBasic(pin)+readUltrasonarBasic(pin))/2;
+  // return readUltrasonarBasic(pin);
 }

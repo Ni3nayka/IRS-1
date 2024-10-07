@@ -8,15 +8,16 @@ Encoder enc1;
 Encoder enc2;
 
 #define TRANSLATE_CM_TO_ENC_PARROT 118
-#define TRANSLATE_ANGLE_TO_ENC_PARROT 17.5 // 15.5
+#define TRANSLATE_ANGLE_TO_ENC_PARROT 16.2 // 16.7 // 15.5
 
 #define MOTOR_SPEED 80
 
-void runEncLeft(long int angle) {
+void runEncLeft(long int angle, int M = 50) {
   enc1.clear();
   enc2.clear();
   bool flag = 1;
   angle *= TRANSLATE_ANGLE_TO_ENC_PARROT; 
+  angle *= -1; 
   long int e_old = 0;
   long int i = 0, i_between = 0;
   unsigned long int t = millis();
@@ -27,9 +28,9 @@ void runEncLeft(long int angle) {
     long int p = e;
     long int d = e-e_old;
     e_old = e;
-    long int pid = p*1.5 + d*400;
-    int l = constrain(pid,-MOTOR_SPEED,MOTOR_SPEED);
-    int r = constrain(-pid,-MOTOR_SPEED,MOTOR_SPEED)*0.78;
+    long int pid = p*2 + d*300;
+    int l = constrain(pid,-M,M);
+    int r = constrain(-pid,-M,M); //*0.78;
     motors.runs(l,r);
     if (abs(e)<10) {
       if (t<millis()) flag = 0;
@@ -39,7 +40,7 @@ void runEncLeft(long int angle) {
   motors.runs();
 }
 
-void runEncForward(long int cm) {
+void runEncForward(long int cm, int M = MOTOR_SPEED) {
   enc1.clear();
   enc2.clear();
   bool flag = 1;
@@ -59,10 +60,10 @@ void runEncForward(long int cm) {
     long int d = e-e_old;
     e_old = e;
     i += e;
-    long int pid = p*1 + i*0 + d*350;
-    //pid = MOTOR_SPEED;
-    int l = constrain(pid+pid_between,-MOTOR_SPEED,MOTOR_SPEED);
-    int r = constrain(pid-pid_between,-MOTOR_SPEED,MOTOR_SPEED)*0.78;
+    long int pid = p*2 + i*0 + d*350;
+    //pid = M;
+    int l = constrain(pid+pid_between,-M,M);
+    int r = constrain(pid-pid_between,-M,M)*0.78;
     motors.runs(l,r);
     if (abs(e)<10) {
       if (t<millis()) flag = 0;
@@ -80,15 +81,24 @@ void runEncForward(long int cm) {
 // #define NUMBER_R_IK 7
 
 // white line
-#define LINE_PID_K_P 0.8
-#define LINE_PID_K_D 50
-#define NUMBER_L_IK 3
-#define NUMBER_R_IK 7
-#define MIN_LINE 620
-#define MAX_LINE 1700
-#define INVERSION_LINE 
-const int POROG_BLACK_LINE = (MAX_LINE+MIN_LINE)/2; // 1400 - white    380 - black
+// #define LINE_PID_K_P 0.8
+// #define LINE_PID_K_D 50
+// #define NUMBER_L_IK 3
+// #define NUMBER_R_IK 7
+// #define MIN_LINE 620
+// #define MAX_LINE 1700
+// #define INVERSION_LINE 
 
+// real line (black)
+#define LINE_PID_K_P 0.7
+#define LINE_PID_K_D 150
+#define NUMBER_L_IK 2
+#define NUMBER_R_IK 8
+#define MIN_LINE 400
+#define MAX_LINE 2300
+#define INVERSION_LINE 
+
+const int POROG_BLACK_LINE = (MAX_LINE+MIN_LINE)/2; // 1400 - white    380 - black
 int global_line_pid_e_old = 0;
 
 
@@ -115,7 +125,7 @@ int getPIDError() {
 void runLinePID() {
   // Serial.println(getPIDError());
   int e = getPIDError(); //bum.getLineAnalog(NUMBER_L_IK) - bum.getLineAnalog(NUMBER_R_IK);
-  e *= -1; //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // e *= -1; //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   int p = e;
   int d = e-global_line_pid_e_old;
   global_line_pid_e_old = e;
@@ -127,19 +137,24 @@ void runLinePID() {
 }
 
 void line(int n = 1) {
+  if (bum.getLineAnalog(5)>POROG_BLACK_LINE) { // если прям ваще криво
+    if (getPIDError()>0) motors.runs(MOTOR_SPEED/2,-MOTOR_SPEED/2,0,0);
+    else motors.runs(-MOTOR_SPEED/2,MOTOR_SPEED/2,0,0);
+    while (bum.getLineAnalog(5)>POROG_BLACK_LINE);
+  }
   for (int i = 0; i<n; i++) {
     for (unsigned long int t = millis()+500; t>millis();) {
       runLinePID();
     }
-    while (bum.getLineAnalog(NUMBER_L_IK)<POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)<POROG_BLACK_LINE) { ////////////////////////////////////////////////////////////
+    while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) { ////////////////////////////////////////////////////////////
       runLinePID();
     }
-    for (unsigned long int t = millis()+80; t>millis();) {
+    for (unsigned long int t = millis()+40; t>millis();) {
       runLinePID();
     }
   }
-  motors.runs(-60,-60);
-  delay(100);
+  motors.runs(-50,-50);
+  delay(130);
   motors.runs();
 }
 

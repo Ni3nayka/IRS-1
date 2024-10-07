@@ -18,6 +18,9 @@ BTS7960_PRO motors;
 
 void setup() {
   // i2cTester(); ///////////////////////////////////////////////// I2C TERSER /////////////////////////////////////////////////////////////////////////
+
+  myservo.attach(8);
+  myservo.write(100); // 55 - захват, 100 - отпустить
   delay(500);
   Serial.begin(9600);
   motors.setup();
@@ -28,11 +31,12 @@ void setup() {
     Serial.println("Found sensor");
   } else {
     Serial.println("No TCS34725 found ... check your connections");
+    disable();
     while (1);
   }
-  myservo.attach(8);
-  myservo.write(100); // 55 - захват, 100 - отпустить
   motors.runs(0,0,0,0);
+  // Serial.println(readUltrasonar());
+  if (readUltrasonar()<20) disable();
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // gy25.setup();
   // testMotors();
@@ -41,7 +45,7 @@ void setup() {
   // motors.runs(-50,-50,0,0); delay(2000);
   // motors.runs(50,-50,0,0); delay(2000);
   // motors.runs(-50,50,0,0); delay(2000);
-  // motors.runs(0,0,20,0); delay(1000);
+  // motors.runs(0,0,0,-20); delay(3000);
   // motors.runs(0,0,0,0);
   // runEncForward(43); // 43
   // runEncForward(-43); 
@@ -50,13 +54,52 @@ void setup() {
   // writeHight(1,3); delay(1000);
   // writeHight(2); delay(1000);
   // writeHight(3); delay(1000);
+  // writeHight(1,3); delay(1000);
+  // writeHight(1); delay(1000);
+  // writeHight(1); delay(1000);
+  // motors.runs(0,0,0,-20); delay(1000); motors.runs();
   // line(4);
   // runEncLeft(180);
   // line(4);
   // turnLeft();
+  findObject();
+  // line(1);
+  // runEncLeft(360);
+  // line();
+  
 }
 
+
+// color:
+// black:  Color Temp: 3211 K - Lux: 107 -  R: 296  G: 195  B: 143  C: 628  
+// yellow: Color Temp: 2331 K - Lux: 1632 - R: 3281 G: 2085 B: 810  C: 6334  
+// white:  Color Temp: 3426 K - Lux: 1594 - R: 3307 G: 2510 B: 1767 C: 7762  
+// blue:   Color Temp: 6576 K - Lux: 374 -  R: 529  G: 680  B: 720  C: 1935  
+// green:  Color Temp: 5083 K - Lux: 869 -  R: 614  G: 953  B: 595  C: 2203  
+// red:    Color Temp: 1948 K - Lux: -286 - R: 2044 G: 413  B: 376  C: 2653  
+
+
 void loop() {
+
+  // line();
+  // runEncLeft(-180);
+  // delay(1000);
+  // line();
+  // runEncLeft(180);
+  // delay(1000);
+
+  // line(3);
+  // runEncLeft(-90);
+  // line(2);
+  // runEncLeft(-90);
+  // line(2);
+  // runEncLeft(-90);
+  // line(2);
+  // runEncLeft(90);
+  // line(1);
+  // runEncLeft(180);
+  // delay(1000);
+
   // gy25.update();
   // if (t<millis()) {
   //   gy25.print();
@@ -69,6 +112,48 @@ void loop() {
   // Serial.println(enc2.get());
   // delay(1000);
   // getColor();
+  // Serial.println(getPIDError());
+  // getPIDError();
   // runLinePID();
-  Serial.println(readUltrasonar());
+  // Serial.println(readUltrasonar());
+  // Serial.println(analogRead(A0));
+  // findObject();
+}
+
+bool findObject() {
+  enc1.clear();
+  enc2.clear();
+  motors.runs(35,-35);
+  int a = 100;
+  unsigned long int t = millis()+700;
+  bool end = 0;
+  while (a>30 && !end) {
+    a = readUltrasonar();
+    if (t<millis() && bum.getLineAnalog(5)<POROG_BLACK_LINE) end = 1;
+  }
+  long int angle = (abs(enc1.get())+abs(enc2.get()))/(TRANSLATE_ANGLE_TO_ENC_PARROT*2);
+  if (!end) {
+    a += 5;
+    motors.runs(-50,50);
+    delay(100);
+    runEncForward(a,40);
+    myservo.write(55);
+    delay(500);
+    getColor();
+    runEncForward(-a+2,40);
+    writeHight(3);// delay(1000);
+    myservo.write(100);
+    // delay(1000);
+    writeHight(1);// delay(1000);
+    // доворот
+    // motors.runs(40,-40);
+    // while (bum.getLineAnalog(5)>POROG_BLACK_LINE);
+    // motors.runs(-50,50);
+    // delay(100);
+    // motors.runs();
+    // return 1;
+  }
+  // доворот + разворот
+  runEncLeft(-250+angle);
+  return 0;
 }
