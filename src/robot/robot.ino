@@ -50,9 +50,9 @@ void setup() {
   // writeHight(1,3); delay(1000);
   // writeHight(2); delay(1000);
   // writeHight(3); delay(1000);
-  line(4);
-  runEncLeft(180);
-  line(4);
+  // line(4);
+  // runEncLeft(180);
+  // line(4);
   // turnLeft();
 }
 
@@ -68,8 +68,7 @@ void loop() {
   // Serial.println(enc1.get()); // Выводим показания энкодера 1
   // Serial.println(enc2.get());
   // delay(1000);
-
   // getColor();
-
   // runLinePID();
+  Serial.println(readUltrasonar());
 }
