@@ -28,20 +28,59 @@ iarduino_I2C_Bumper bum(0x09);
 #include "Adafruit_TCS34725.h"
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
-#define POROG_BLACK_LINE 1300 // 2300 - white    300 - black
-#define LINE_PID_K_P 0.05
+// black line
+// #define POROG_BLACK_LINE 1300 // 2300 - white    300 - black
+// #define LINE_PID_K_P 0.05
+// #define MOTOR_SPEED 50
+// #define NUMBER_L_IK 3
+// #define NUMBER_R_IK 7
+
+// white line
+#define POROG_BLACK_LINE 800 // 1400 - white    380 - black
+#define LINE_PID_K_P 0.4
+#define LINE_PID_K_D 8
 #define MOTOR_SPEED 50
 #define NUMBER_L_IK 3
 #define NUMBER_R_IK 7
+#define MIN_LINE 620
+#define MAX_LINE 1700
+#define INVERSION_LINE 
+
+int global_line_pid_e_old = 0;
 
 #include <Servo.h>
 Servo myservo; 
 
+int getPIDError() {
+  // Serial.println(bum.getLineAnalog(5));
+  int a[7] = {0};
+  for (int i = 2; i<=8; i++) {
+    a[i-2] = bum.getLineAnalog(i);
+    if (1) {
+      #ifdef INVERSION_LINE
+      a[i-2] = map(constrain(a[i-2],MIN_LINE,MAX_LINE),MIN_LINE,MAX_LINE,0,100);
+      #else
+      a[i-2] = map(constrain(a[i-2],MIN_LINE,MAX_LINE),MAX_LINE,MIN_LINE,0,100);
+      #endif
+    }
+    // Serial.print(a[i-2]); Serial.print(" ");
+  }
+  // Serial.println();
+  long int chislitel = a[0]*3+a[1]*2+a[2]-a[4]-a[5]*2-a[6]*3;
+  long int znamenatel = a[0]+a[1]+a[2]+a[4]+a[5]+a[6];
+  return chislitel*100/znamenatel;
+}
+
 void runLinePID() {
-  int e = bum.getLineAnalog(NUMBER_L_IK) - bum.getLineAnalog(NUMBER_R_IK);
-  int p = e*LINE_PID_K_P;
-  int l = constrain(MOTOR_SPEED+p,-10,MOTOR_SPEED);
-  int r = constrain(MOTOR_SPEED-p,-10,MOTOR_SPEED);
+  // Serial.println(getPIDError());
+  int e = getPIDError(); //bum.getLineAnalog(NUMBER_L_IK) - bum.getLineAnalog(NUMBER_R_IK);
+  e *= -1; //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  int p = e;
+  int d = e-global_line_pid_e_old;
+  global_line_pid_e_old = e;
+  int pid = p*LINE_PID_K_P + d*LINE_PID_K_D;
+  int l = constrain(MOTOR_SPEED+pid,-10,MOTOR_SPEED);
+  int r = constrain(MOTOR_SPEED-pid,-10,MOTOR_SPEED);
   motors.runs(l,r,0,0);
 }
 
@@ -117,7 +156,7 @@ void setup() {
   motors.setup();
   bum.begin(); 
   enc1.setup(A3,A2);
-  enc2.setup(A1,A0);
+  enc2.setup(A1,12);
   if (tcs.begin()) {
     Serial.println("Found sensor");
   } else {
@@ -221,5 +260,7 @@ void loop() {
   // Serial.println(enc2.get());
   // delay(1000);
 
-  getColor();
+  // getColor();
+
+  runLinePID();
 }
