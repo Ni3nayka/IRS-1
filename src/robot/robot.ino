@@ -16,6 +16,8 @@ Encoder enc2;
 #include "BTS7960_PRO.h"
 BTS7960_PRO motors;
 
+#include "i2c_tester.h"
+
 // #include "gy-25.h"
 // GY25 gy25(12,8); // (TX,RX) - пины гироскопа
 
@@ -23,11 +25,17 @@ BTS7960_PRO motors;
 #include <iarduino_I2C_Bumper.h>                           //   Подключаем библиотеку для работы с бампером I2C-flash.
 iarduino_I2C_Bumper bum(0x09); 
 
+#include "Adafruit_TCS34725.h"
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
+
 #define POROG_BLACK_LINE 1300 // 2300 - white    300 - black
 #define LINE_PID_K_P 0.05
 #define MOTOR_SPEED 50
 #define NUMBER_L_IK 3
 #define NUMBER_R_IK 7
+
+// #include <Servo.h>
+// Servo myservo; 
 
 void runLinePID() {
   int e = bum.getLineAnalog(NUMBER_L_IK) - bum.getLineAnalog(NUMBER_R_IK);
@@ -51,13 +59,71 @@ void line(int n = 1) {
   motors.runs();
 }
 
+int global_state_hight_arm = 1;
+
+void writeHight(int state, int real_state = -1) {
+  if (real_state!=-1) global_state_hight_arm = real_state;
+  int POROG = 350;
+  int PIN = A0;
+  if (state==global_state_hight_arm) return;
+  bool down_move = state<global_state_hight_arm;
+
+  // motors.run(3,10); // 10 - вниз, -10 - вверх
+  // motors.run(3,20); // вниз
+  // motors.run(3,-30); // вверх
+
+  if (down_move) motors.run(3,20); // вниз
+  else motors.run(3,-50); // вверх
+
+  while (analogRead(PIN)<POROG); // пока черный
+  delay(50);
+  while (analogRead(PIN)>POROG); // пока белый
+  if (down_move) delay(60);
+  else delay(90);
+
+  if (down_move) motors.run(3,-50);
+  else motors.run(3,50);
+  delay(50);
+  motors.run(3,0);
+
+  global_state_hight_arm = global_state_hight_arm + (int(!down_move)*2-1);
+  //if (global_state_hight_arm!=state) 
+  writeHight(state);
+}
+
+int getColor() { // 
+  int r, g, b, c, colorTemp, lux;
+
+  tcs.getRawData(&r, &g, &b, &c);
+  // colorTemp = tcs.calculateColorTemperature(r, g, b);
+  colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
+  lux = tcs.calculateLux(r, g, b);
+
+  if (1) {
+    Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
+    Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
+    Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
+    Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
+    Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
+    Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
+    Serial.println(" ");
+  }
+}
+
 void setup() {
+  // i2cTester(); ///////////////////////////////////////////////// I2C TERSER /////////////////////////////////////////////////////////////////////////
   delay(500);
   Serial.begin(9600);
   motors.setup();
   bum.begin(); 
   enc1.setup(A3,A2);
   enc2.setup(A1,A0);
+  if (tcs.begin()) {
+    Serial.println("Found sensor");
+  } else {
+    Serial.println("No TCS34725 found ... check your connections");
+    while (1);
+  }
   // gy25.setup();
   // testMotors();
   // testMotors();
@@ -70,8 +136,11 @@ void setup() {
   //line(3);
   // runEncForward(43); // 43
   // runEncForward(-43); 
-  runEncLeft(360);
-  runEncLeft(-360);
+  // runEncLeft(360);
+  // runEncLeft(-360);
+  // writeHight(1,3); delay(1000);
+  // writeHight(2); delay(1000);
+  // writeHight(3); delay(1000);
 }
 
 #define TRANSLATE_CM_TO_ENC_PARROT 118
@@ -149,4 +218,6 @@ void loop() {
   // Serial.println(enc1.get()); // Выводим показания энкодера 1
   // Serial.println(enc2.get());
   // delay(1000);
+
+  getColor();
 }
