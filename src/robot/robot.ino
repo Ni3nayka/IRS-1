@@ -34,8 +34,8 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS347
 #define NUMBER_L_IK 3
 #define NUMBER_R_IK 7
 
-// #include <Servo.h>
-// Servo myservo; 
+#include <Servo.h>
+Servo myservo; 
 
 void runLinePID() {
   int e = bum.getLineAnalog(NUMBER_L_IK) - bum.getLineAnalog(NUMBER_R_IK);
@@ -124,6 +124,8 @@ void setup() {
     Serial.println("No TCS34725 found ... check your connections");
     while (1);
   }
+  myservo.attach(8);
+  myservo.write(100); // 55 - захват, 100 - отпустить
   // gy25.setup();
   // testMotors();
   // testMotors();
