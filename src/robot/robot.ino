@@ -70,15 +70,6 @@ void setup() {
 }
 
 
-// color:
-// black:  Color Temp: 3211 K - Lux: 107 -  R: 296  G: 195  B: 143  C: 628  
-// yellow: Color Temp: 2331 K - Lux: 1632 - R: 3281 G: 2085 B: 810  C: 6334  
-// white:  Color Temp: 3426 K - Lux: 1594 - R: 3307 G: 2510 B: 1767 C: 7762  
-// blue:   Color Temp: 6576 K - Lux: 374 -  R: 529  G: 680  B: 720  C: 1935  
-// green:  Color Temp: 5083 K - Lux: 869 -  R: 614  G: 953  B: 595  C: 2203  
-// red:    Color Temp: 1948 K - Lux: -286 - R: 2044 G: 413  B: 376  C: 2653  
-
-
 void loop() {
 
   // line();

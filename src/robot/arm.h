@@ -49,6 +49,13 @@ void writeHight(int state, int real_state = -1) {
   writeHight(state);
 }
 
+#define COLOR_WHITE 1
+#define COLOR_BLACK 2
+#define COLOR_YELLOW 3
+#define COLOR_RED 4
+#define COLOR_GREEN 5
+#define COLOR_BLUE 6
+
 int getColor() { // 
   int r, g, b, c, colorTemp, lux;
 
@@ -57,7 +64,7 @@ int getColor() { //
   colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
   lux = tcs.calculateLux(r, g, b);
 
-  if (1) {
+  if (0) {
     Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
     Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
     Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
@@ -66,6 +73,22 @@ int getColor() { //
     Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
     Serial.println(" ");
   }
+
+
+  // color:
+  // black:  Color Temp: 3211 K - Lux: 107 -  R: 296  G: 195  B: 143  C: 628  
+  // yellow: Color Temp: 2331 K - Lux: 1632 - R: 3281 G: 2085 B: 810  C: 6334  
+  // white:  Color Temp: 3426 K - Lux: 1594 - R: 3307 G: 2510 B: 1767 C: 7762  
+  // blue:   Color Temp: 6576 K - Lux: 374 -  R: 529  G: 680  B: 720  C: 1935  
+  // green:  Color Temp: 5083 K - Lux: 869 -  R: 614  G: 953  B: 595  C: 2203  
+  // red:    Color Temp: 1948 K - Lux: -286 - R: 2044 G: 413  B: 376  C: 2653  
+
+  if      (r>1500 && g>1500 && b>1500) return COLOR_WHITE;
+  else if (r<500 && g<500 && b<500) return COLOR_BLACK;
+  else if (r>1500 && g>1500 && b<1500) return COLOR_YELLOW;
+  else if (r>1500 && g<1500 && b<1500) return COLOR_RED;
+  if (g>800) return COLOR_GREEN;
+  else return COLOR_BLUE;
 }
 
 int readUltrasonarBasic(int pin = 11) {
