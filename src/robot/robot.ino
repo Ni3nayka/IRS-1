@@ -36,7 +36,9 @@ void setup() {
   }
   motors.runs(0,0,0,0);
   // Serial.println(readUltrasonar());
+  readUltrasonar();
   if (readUltrasonar()<20) disable();
+  Serial.println("OK");
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // gy25.setup();
   // testMotors();
@@ -60,17 +62,65 @@ void setup() {
   // motors.runs(0,0,0,-20); delay(1000); motors.runs();
   // line(4);
   // runEncLeft(180);
-  // line(4);
+  // line();
   // turnLeft();
-  findObject();
+  // findObject();
   // line(1);
   // runEncLeft(360);
   // line();
   
+  // line(1);
+  // runEncLeft(90);
+  // findObject();
+  // line(1);
+  // line(1);
+  // line(1);
+  // runEncForward(40);
+  // motors.run(4,-20); delay(1500); motors.runs();
+  // myservo.write(100);
+  // runEncForward(-40);
+  // runEncLeft(180);
+
+  // runEncLeft(360);
+
+  // line(1);
+  //while(1) {
+    // line(1);
+    // int a = 0;
+    // a = findObject2();
+    // if (a!=0) {
+      
+    //   //if (a==3) break;
+    //   line(1);
+    //   line(1);
+    // }
+    // else {
+    //   line(1);
+    //   runEncLeft(-90);
+    //   line(1);
+    //   runEncLeft(-90);
+    //   line(1);
+    //   //break;
+    // }
+  //}
+  line(2);
+  // findObject2();
+  // myservo.write(100);
 }
 
+void otvozBanki() { //int color
+  line(1);
+  line(1);
+  line(1);
+  runEncForward(40);
+  motors.run(4,-20); delay(1500); motors.runs();
+  myservo.write(100);
+  runEncForward(-40);
+  runEncLeft(180);
+}
 
 void loop() {
+  // getPIDError();
 
   // line();
   // runEncLeft(-180);
@@ -109,16 +159,63 @@ void loop() {
   // Serial.println(readUltrasonar());
   // Serial.println(analogRead(A0));
   // findObject();
+  
+}
+
+int findObject2() {
+  delay(500);
+  int a = 999;
+  for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
+  if (a<25) {
+    runEncForward(15,40);
+    myservo.write(55);
+    delay(500);
+    Serial.println(myColor());
+    // motors.run(4,60); delay(300); motors.runs();
+    // runEncForward(-15,40);
+    // runEncLeft(180);
+    return 1;
+  }
+  else {
+    runEncLeft(30);
+    a = 999; for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
+    if (a<25) {
+      runEncForward(15,40);
+      myservo.write(55);
+      delay(500);
+      Serial.println(myColor());
+      // motors.run(4,60); delay(300); motors.runs();
+      // runEncForward(-15,40);
+      // runEncLeft(150);
+      return 2;
+    }
+    else {
+      runEncLeft(-60);
+      a = 999; for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
+      if (a<25) {
+        runEncForward(15,40);
+        myservo.write(55);
+        delay(500);
+        Serial.println(myColor());
+        // motors.run(4,60); delay(300); motors.runs();
+        // runEncForward(-15,40);
+        // runEncLeft(-150);
+        return 3;
+      }
+    } 
+  }
+  // runEncLeft(-150);
+  return 0;
 }
 
 bool findObject() {
   enc1.clear();
   enc2.clear();
-  motors.runs(35,-35);
+  motors.runs(32,-32);
   int a = 100;
   unsigned long int t = millis()+700;
   bool end = 0;
-  while (a>30 && !end) {
+  while (a>20 && !end) {
     a = readUltrasonar();
     if (t<millis() && bum.getLineAnalog(5)<POROG_BLACK_LINE) end = 1;
   }
@@ -127,15 +224,16 @@ bool findObject() {
     a += 5;
     motors.runs(-50,50);
     delay(100);
-    runEncForward(a,40);
+    runEncForward(a+5,40);
     myservo.write(55);
     delay(500);
     getColor();
-    runEncForward(-a+2,40);
-    writeHight(3);// delay(1000);
-    myservo.write(100);
+    runEncForward(-a-12,40);
+    // writeHight(3);// delay(1000);
+    motors.run(4,60); delay(300); motors.runs();
+    // myservo.write(100);
     // delay(1000);
-    writeHight(1);// delay(1000);
+    // writeHight(1);// delay(1000);
     // доворот
     // motors.runs(40,-40);
     // while (bum.getLineAnalog(5)>POROG_BLACK_LINE);
@@ -145,6 +243,6 @@ bool findObject() {
     // return 1;
   }
   // доворот + разворот
-  runEncLeft(-250+angle);
+  runEncLeft(angle+100);
   return 0;
 }

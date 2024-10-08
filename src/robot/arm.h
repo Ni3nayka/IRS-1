@@ -13,6 +13,7 @@ void disable(unsigned long int t=0) {
     myservo.detach();
     motors.runs(0,0,0,-20); delay(3000);
     motors.runs();
+    Serial.println("OFF");
     while(1);
   }
   
@@ -55,6 +56,19 @@ void writeHight(int state, int real_state = -1) {
 #define COLOR_RED 4
 #define COLOR_GREEN 5
 #define COLOR_BLUE 6
+
+bool myColor() {
+  delay(1000);
+  int r, g, b, c; //, colorTemp, lux;
+
+  tcs.getRawData(&r, &g, &b, &c);
+  // colorTemp = tcs.calculateColorTemperature(r, g, b);
+  // colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
+  // lux = tcs.calculateLux(r, g, b);
+  Serial.println(r);
+  if (r<1500) return 1;
+  else return 0;
+}
 
 int getColor() { // 
   int r, g, b, c, colorTemp, lux;
@@ -123,6 +137,7 @@ int readUltrasonarBasic(int pin = 11) {
   // delay(250);
   cm = constrain(cm,0,100);
   if (cm<3) cm = 100;
+  Serial.println("dist: " + String(cm));
   return cm;
 }
 

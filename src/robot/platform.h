@@ -8,7 +8,7 @@ Encoder enc1;
 Encoder enc2;
 
 #define TRANSLATE_CM_TO_ENC_PARROT 118
-#define TRANSLATE_ANGLE_TO_ENC_PARROT 16.2 // 16.7 // 15.5
+#define TRANSLATE_ANGLE_TO_ENC_PARROT 16 // 16.7 // 15.5
 
 #define MOTOR_SPEED 80
 
@@ -30,7 +30,7 @@ void runEncLeft(long int angle, int M = 50) {
     e_old = e;
     long int pid = p*2 + d*300;
     int l = constrain(pid,-M,M);
-    int r = constrain(-pid,-M,M); //*0.78;
+    int r = constrain(-pid,-M,M)*0.8; // 0.78
     motors.runs(l,r);
     if (abs(e)<10) {
       if (t<millis()) flag = 0;
@@ -90,42 +90,41 @@ void runEncForward(long int cm, int M = MOTOR_SPEED) {
 // #define INVERSION_LINE 
 
 // real line (black)
-#define LINE_PID_K_P 0.7
+#define LINE_PID_K_P 1.5
 #define LINE_PID_K_D 150
-#define NUMBER_L_IK 2
-#define NUMBER_R_IK 8
-#define MIN_LINE 400
-#define MAX_LINE 2300
-#define INVERSION_LINE 
+#define NUMBER_L_IK 1
+#define NUMBER_R_IK 9
+#define MIN_LINE 500
+#define MAX_LINE 2200
+// #define INVERSION_LINE 
 
 const int POROG_BLACK_LINE = (MAX_LINE+MIN_LINE)/2; // 1400 - white    380 - black
 int global_line_pid_e_old = 0;
 
-
 int getPIDError() {
   // Serial.println(bum.getLineAnalog(5));
   int a[7] = {0};
-  for (int i = 2; i<=8; i++) {
-    a[i-2] = bum.getLineAnalog(i);
+  for (int i = 1; i<=9; i++) {
+    a[i-1] = bum.getLineAnalog(i);
     if (1) {
       #ifdef INVERSION_LINE
-      a[i-2] = map(constrain(a[i-2],MIN_LINE,MAX_LINE),MIN_LINE,MAX_LINE,0,100);
+      a[i-1] = map(constrain(a[i-1],MIN_LINE,MAX_LINE),MIN_LINE,MAX_LINE,0,100);
       #else
-      a[i-2] = map(constrain(a[i-2],MIN_LINE,MAX_LINE),MAX_LINE,MIN_LINE,0,100);
+      a[i-1] = map(constrain(a[i-1],MIN_LINE,MAX_LINE),MAX_LINE,MIN_LINE,0,100);
       #endif
     }
-    // Serial.print(a[i-2]); Serial.print(" ");
+    // Serial.print(a[i-1]); Serial.print(" ");
   }
   // Serial.println();
-  long int chislitel = a[0]*3+a[1]*2+a[2]-a[4]-a[5]*2-a[6]*3;
-  long int znamenatel = a[0]+a[1]+a[2]+a[4]+a[5]+a[6];
+  long int chislitel = a[0]*4+a[1]*3+a[2]*2+a[3]*1-a[5]*1-a[6]*2-a[7]*3-a[8]*4;
+  long int znamenatel = a[0]+a[1]+a[2]+a[3]+a[5]+a[6]+a[7]+a[8];
   return chislitel*100/znamenatel;
 }
 
 void runLinePID() {
   // Serial.println(getPIDError());
   int e = getPIDError(); //bum.getLineAnalog(NUMBER_L_IK) - bum.getLineAnalog(NUMBER_R_IK);
-  // e *= -1; //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  e *= -1; //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   int p = e;
   int d = e-global_line_pid_e_old;
   global_line_pid_e_old = e;
@@ -136,26 +135,46 @@ void runLinePID() {
   motors.runs(l,r,0,0);
 }
 
+// void line(int n = 1) {
+//   if (bum.getLineAnalog(5)>POROG_BLACK_LINE) { // если прям ваще криво
+//     if (getPIDError()<0) motors.runs(MOTOR_SPEED/2,-MOTOR_SPEED/2,0,0);
+//     else motors.runs(-MOTOR_SPEED/2,MOTOR_SPEED/2,0,0);
+//     while (bum.getLineAnalog(5)>POROG_BLACK_LINE);
+//   }
+//   for (int i = 0; i<n; i++) {
+//     for (unsigned long int t = millis()+200; t>millis();) {
+//       runLinePID();
+//     }
+//     while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) { ////////////////////////////////////////////////////////////
+//       runLinePID();
+//     }
+//     for (unsigned long int t = millis()+40; t>millis();) {
+//       runLinePID();
+//     }
+//     motors.runs(-50,-50);
+//     delay(50);
+//   }
+//   motors.runs(-50,-50);
+//   delay(130);
+//   motors.runs();
+// }
+
+unsigned long int globalT = 0;
+
+void tPID(int t) {
+  globalT = millis()+t;
+  while (globalT>millis()) runLinePID();
+}
+
 void line(int n = 1) {
-  if (bum.getLineAnalog(5)>POROG_BLACK_LINE) { // если прям ваще криво
-    if (getPIDError()>0) motors.runs(MOTOR_SPEED/2,-MOTOR_SPEED/2,0,0);
-    else motors.runs(-MOTOR_SPEED/2,MOTOR_SPEED/2,0,0);
-    while (bum.getLineAnalog(5)>POROG_BLACK_LINE);
-  }
   for (int i = 0; i<n; i++) {
-    for (unsigned long int t = millis()+500; t>millis();) {
-      runLinePID();
-    }
-    while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) { ////////////////////////////////////////////////////////////
-      runLinePID();
-    }
-    for (unsigned long int t = millis()+40; t>millis();) {
-      runLinePID();
-    }
+    //while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) runLinePID();
+    tPID(40);
+    motors.runs(-50,-50);
+    delay(130);
+    motors.runs();
   }
-  motors.runs(-50,-50);
-  delay(130);
-  motors.runs();
+  
 }
 
 void turnLeft() {
