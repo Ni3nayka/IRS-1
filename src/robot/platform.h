@@ -132,6 +132,8 @@ void runLinePID() {
   int l = constrain(MOTOR_SPEED+pid,-10,MOTOR_SPEED);
   int r = constrain(MOTOR_SPEED-pid,-10,MOTOR_SPEED);
   // Serial.println(String(l) + " " + String(r));
+  // Тупая ардуина не может проехать line(2) без этой (следующей) строчки!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  Serial.println(String(bum.getLineAnalog(NUMBER_R_IK)) + " " + String(bum.getLineAnalog(NUMBER_R_IK)));
   motors.runs(l,r,0,0);
 }
 
@@ -168,7 +170,7 @@ void tPID(int t) {
 
 void line(int n = 1) {
   for (int i = 0; i<n; i++) {
-    //while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) runLinePID();
+    while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) runLinePID();
     tPID(40);
     motors.runs(-50,-50);
     delay(130);
