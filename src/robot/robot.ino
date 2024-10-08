@@ -20,7 +20,7 @@ void setup() {
   // i2cTester(); ///////////////////////////////////////////////// I2C TERSER /////////////////////////////////////////////////////////////////////////
 
   myservo.attach(8);
-  myservo.write(100); // 55 - захват, 100 - отпустить
+  myservo.write(90); // 55 - захват, 100 - отпустить
   delay(500);
   Serial.begin(9600);
   motors.setup();
@@ -77,7 +77,7 @@ void setup() {
   // line(1);
   // runEncForward(40);
   // motors.run(4,-20); delay(1500); motors.runs();
-  // myservo.write(100);
+  // myservo.write(90);
   // runEncForward(-40);
   // runEncLeft(180);
 
@@ -103,20 +103,46 @@ void setup() {
     //   //break;
     // }
   //}
-  line(2);
+  // line(2);
   // findObject2();
-  // myservo.write(100);
+  // myservo.write(90);
+
+  line();
+  int a = 0;
+  a = findObject2();
+  if (a!=0) otvozBanki();
+
+  // writeHight(3);
 }
 
+int global_x = 0, global_n = 0;
+
 void otvozBanki() { //int color
-  line(1);
-  line(1);
-  line(1);
-  runEncForward(40);
-  motors.run(4,-20); delay(1500); motors.runs();
-  myservo.write(100);
-  runEncForward(-40);
+  line(3);
+  runEncLeft(90);
+  line(2);
+  runEncLeft(-90);
+  writeHight(2); ///////////////////////////////////////////////////////////////////////
+  runEncForward(35);
+  //motors.run(4,-20); delay(1500); motors.runs(); delay(500);
+  for (int i = 65; i<90; i++) {
+    myservo.write(i);
+    delay(5);
+  }
+  delay(500);
+  // runEncForward(-35);
+  motors.runs(-40,-40);
+  delay(800);
+  motors.runs(40,40);
+  delay(50);
+  motors.runs();
   runEncLeft(180);
+  writeHight(1);
+  line();
+  runEncLeft(90); 
+  line(2); //////////////////////////////////////////////////// 1-3
+  runEncLeft(-90);
+  line(3);
 }
 
 void loop() {
@@ -162,18 +188,21 @@ void loop() {
   
 }
 
+int global_color = 0;
+
 int findObject2() {
   delay(500);
   int a = 999;
   for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
   if (a<25) {
     runEncForward(15,40);
-    myservo.write(55);
+    myservo.write(65);
     delay(500);
-    Serial.println(myColor());
-    // motors.run(4,60); delay(300); motors.runs();
-    // runEncForward(-15,40);
-    // runEncLeft(180);
+    global_color = myColor();
+    Serial.println(global_color);
+    motors.run(4,60); delay(300); motors.runs();
+    runEncForward(-15,40);
+    runEncLeft(180);
     return 1;
   }
   else {
@@ -181,12 +210,13 @@ int findObject2() {
     a = 999; for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
     if (a<25) {
       runEncForward(15,40);
-      myservo.write(55);
+      myservo.write(65);
       delay(500);
-      Serial.println(myColor());
-      // motors.run(4,60); delay(300); motors.runs();
-      // runEncForward(-15,40);
-      // runEncLeft(150);
+      global_color = myColor();
+      Serial.println(global_color);
+      motors.run(4,60); delay(300); motors.runs();
+      runEncForward(-15,40);
+      runEncLeft(150);
       return 2;
     }
     else {
@@ -194,17 +224,18 @@ int findObject2() {
       a = 999; for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
       if (a<25) {
         runEncForward(15,40);
-        myservo.write(55);
+        myservo.write(65);
         delay(500);
-        Serial.println(myColor());
-        // motors.run(4,60); delay(300); motors.runs();
-        // runEncForward(-15,40);
-        // runEncLeft(-150);
+        global_color = myColor();
+        Serial.println(global_color);
+        motors.run(4,60); delay(300); motors.runs();
+        runEncForward(-15,40);
+        runEncLeft(-150);
         return 3;
       }
     } 
   }
-  // runEncLeft(-150);
+  runEncLeft(-150);
   return 0;
 }
 
@@ -225,13 +256,13 @@ bool findObject() {
     motors.runs(-50,50);
     delay(100);
     runEncForward(a+5,40);
-    myservo.write(55);
+    myservo.write(65);
     delay(500);
     getColor();
     runEncForward(-a-12,40);
     // writeHight(3);// delay(1000);
     motors.run(4,60); delay(300); motors.runs();
-    // myservo.write(100);
+    // myservo.write(90);
     // delay(1000);
     // writeHight(1);// delay(1000);
     // доворот

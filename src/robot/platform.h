@@ -49,6 +49,7 @@ void runEncForward(long int cm, int M = MOTOR_SPEED) {
   long int i = 0, i_between = 0;
   unsigned long int t = millis();
   while (flag) {
+    // Serial.println(String(enc1.get()) + " " + String(enc2.get()));
     long int e1 = cm - enc1.get();
     long int e2 = cm - enc2.get();
     long int e = (e1+e2)/2;
@@ -90,8 +91,8 @@ void runEncForward(long int cm, int M = MOTOR_SPEED) {
 // #define INVERSION_LINE 
 
 // real line (black)
-#define LINE_PID_K_P 1.5
-#define LINE_PID_K_D 150
+#define LINE_PID_K_P 2
+#define LINE_PID_K_D 200
 #define NUMBER_L_IK 1
 #define NUMBER_R_IK 9
 #define MIN_LINE 500
@@ -169,14 +170,21 @@ void tPID(int t) {
 }
 
 void line(int n = 1) {
+  Serial.println("!");
+  Serial.println(bum.getLineAnalog(5));
+  // if (bum.getLineAnalog(5)>POROG_BLACK_LINE) { // если прям ваще криво
+  //   if (getPIDError()<0) motors.runs(MOTOR_SPEED/2,-MOTOR_SPEED/2,0,0);
+  //   else motors.runs(-MOTOR_SPEED/2,MOTOR_SPEED/2,0,0);
+  //   //while (bum.getLineAnalog(5)>POROG_BLACK_LINE) bum.getLineAnalog(5);
+  // }
   for (int i = 0; i<n; i++) {
+    tPID(300);
     while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) runLinePID();
     tPID(40);
-    motors.runs(-50,-50);
-    delay(130);
-    motors.runs();
   }
-  
+  motors.runs(-50,-50);
+  delay(130);
+  motors.runs();
 }
 
 void turnLeft() {
