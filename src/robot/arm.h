@@ -10,11 +10,11 @@ int global_state_hight_arm = 1;
 
 void disable(unsigned long int t=0) {
   if (t<millis()) {
-    myservo.detach();
+    // myservo.detach();
     motors.runs(0,0,0,-20); delay(3000);
     motors.runs();
     Serial.println("OFF");
-    while(1);
+    // while(1);
   }
   
 }

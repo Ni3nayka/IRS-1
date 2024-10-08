@@ -104,7 +104,7 @@ int global_line_pid_e_old = 0;
 
 int getPIDError() {
   // Serial.println(bum.getLineAnalog(5));
-  int a[7] = {0};
+  int a[9] = {0};
   for (int i = 1; i<=9; i++) {
     a[i-1] = bum.getLineAnalog(i);
     if (1) {
@@ -119,6 +119,7 @@ int getPIDError() {
   // Serial.println();
   long int chislitel = a[0]*4+a[1]*3+a[2]*2+a[3]*1-a[5]*1-a[6]*2-a[7]*3-a[8]*4;
   long int znamenatel = a[0]+a[1]+a[2]+a[3]+a[5]+a[6]+a[7]+a[8];
+  if (znamenatel==0) return 0;
   return chislitel*100/znamenatel;
 }
 
@@ -172,11 +173,11 @@ void tPID(int t) {
 void line(int n = 1) {
   Serial.println("!");
   Serial.println(bum.getLineAnalog(5));
-  // if (bum.getLineAnalog(5)>POROG_BLACK_LINE) { // если прям ваще криво
-  //   if (getPIDError()<0) motors.runs(MOTOR_SPEED/2,-MOTOR_SPEED/2,0,0);
-  //   else motors.runs(-MOTOR_SPEED/2,MOTOR_SPEED/2,0,0);
-  //   //while (bum.getLineAnalog(5)>POROG_BLACK_LINE) bum.getLineAnalog(5);
-  // }
+  if (bum.getLineAnalog(5)>POROG_BLACK_LINE) { // если прям ваще криво
+    if (getPIDError()<0) motors.runs(MOTOR_SPEED/2,-MOTOR_SPEED/2,0,0);
+    else motors.runs(-MOTOR_SPEED/2,MOTOR_SPEED/2,0,0);
+    while (bum.getLineAnalog(5)>POROG_BLACK_LINE) bum.getLineAnalog(5);
+  }
   for (int i = 0; i<n; i++) {
     tPID(300);
     while (bum.getLineAnalog(NUMBER_L_IK)>POROG_BLACK_LINE || bum.getLineAnalog(NUMBER_R_IK)>POROG_BLACK_LINE) runLinePID();

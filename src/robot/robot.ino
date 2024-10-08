@@ -16,6 +16,94 @@ BTS7960_PRO motors;
 #include "arm.h"
 #include "i2c_tester.h"
 
+
+int global_x = 0, global_n = 0;
+
+void otvozBanki(int nn = 2) { //int color
+  global_n++;
+  line(3);
+  if (nn!=0) {
+    runEncLeft(90);
+    line(nn);
+    runEncLeft(-90);
+  }
+  if (global_n==1) writeHight(3); ///////////////////////////////////////////////////////////////////////
+  else if (global_n==2) writeHight(2);
+  else {
+    motors.run(4,-20); delay(100); motors.runs();
+  }
+  runEncForward(35);
+  //motors.run(4,-20); delay(1500); motors.runs(); delay(500);
+  for (int i = 65; i<90; i++) {
+    myservo.write(i);
+    delay(5);
+  }
+  delay(500);
+  // runEncForward(-35);
+  motors.runs(-40,-40);
+  delay(800);
+  motors.runs(40,40);
+  delay(50);
+  motors.runs();
+  runEncLeft(185);
+  if (global_n<3) writeHight(1);
+  else {
+    motors.run(4,-20); delay(2000); motors.runs();
+  }
+  line();
+  if (nn!=0) {
+    runEncLeft(90); 
+    line(nn); //////////////////////////////////////////////////// 1-3
+    runEncLeft(-90);
+  }
+  line(3);
+}
+
+void test() {
+  line();
+  int a = -1;
+  while (a!=0) {
+    a = findObject2();
+    if (a!=0) otvozBanki();
+    else {
+      line();
+      runEncLeft(90);
+      line();
+      runEncLeft(90);
+      line();
+    } 
+  }
+  a = -1;
+  while (a!=0) {
+    a = findObject2();
+    if (a!=0) otvozBanki(1);
+    else {
+      line();
+      runEncLeft(90);
+      line();
+      runEncLeft(90);
+      line();
+    } 
+  }
+  a = -1;
+  while (a!=0) {
+    a = findObject2();
+    if (a!=0) otvozBanki(0);
+  }
+  // else////////////////////////////////////////////////////////////////////////////////
+  // if (a==3) {
+  //   a = findObject2();
+  //   if (a!=0) otvozBanki(a,1);
+  // }
+  // else {
+  //   a = findObject2();
+  //   if (a!=0) otvozBanki(a);
+  // }
+
+  // writeHight(3);
+}
+
+
 void setup() {
   // i2cTester(); ///////////////////////////////////////////////// I2C TERSER /////////////////////////////////////////////////////////////////////////
 
@@ -107,42 +195,7 @@ void setup() {
   // findObject2();
   // myservo.write(90);
 
-  line();
-  int a = 0;
-  a = findObject2();
-  if (a!=0) otvozBanki();
-
-  // writeHight(3);
-}
-
-int global_x = 0, global_n = 0;
-
-void otvozBanki() { //int color
-  line(3);
-  runEncLeft(90);
-  line(2);
-  runEncLeft(-90);
-  writeHight(2); ///////////////////////////////////////////////////////////////////////
-  runEncForward(35);
-  //motors.run(4,-20); delay(1500); motors.runs(); delay(500);
-  for (int i = 65; i<90; i++) {
-    myservo.write(i);
-    delay(5);
-  }
-  delay(500);
-  // runEncForward(-35);
-  motors.runs(-40,-40);
-  delay(800);
-  motors.runs(40,40);
-  delay(50);
-  motors.runs();
-  runEncLeft(180);
-  writeHight(1);
-  line();
-  runEncLeft(90); 
-  line(2); //////////////////////////////////////////////////// 1-3
-  runEncLeft(-90);
-  line(3);
+  test();
 }
 
 void loop() {
@@ -191,10 +244,11 @@ void loop() {
 int global_color = 0;
 
 int findObject2() {
+  int DIST = 20;
   delay(500);
   int a = 999;
   for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
-  if (a<25) {
+  if (a<DIST) {
     runEncForward(15,40);
     myservo.write(65);
     delay(500);
@@ -206,9 +260,9 @@ int findObject2() {
     return 1;
   }
   else {
-    runEncLeft(30);
+    runEncLeft(35);
     a = 999; for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
-    if (a<25) {
+    if (a<DIST) {
       runEncForward(15,40);
       myservo.write(65);
       delay(500);
@@ -216,13 +270,13 @@ int findObject2() {
       Serial.println(global_color);
       motors.run(4,60); delay(300); motors.runs();
       runEncForward(-15,40);
-      runEncLeft(150);
+      runEncLeft(145);
       return 2;
     }
     else {
-      runEncLeft(-60);
+      runEncLeft(-70);
       a = 999; for (int i = 0; i< 10; i++) a = min(a,readUltrasonar());
-      if (a<25) {
+      if (a<DIST) {
         runEncForward(15,40);
         myservo.write(65);
         delay(500);
@@ -230,7 +284,7 @@ int findObject2() {
         Serial.println(global_color);
         motors.run(4,60); delay(300); motors.runs();
         runEncForward(-15,40);
-        runEncLeft(-150);
+        runEncLeft(-145);
         return 3;
       }
     } 
