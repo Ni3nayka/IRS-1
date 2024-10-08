@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iarduino_I2C_Bumper.h>                           //   Подключаем библиотеку для работы с бампером I2C-flash.
-iarduino_I2C_Bumper bum(0x09); 
+iarduino_I2C_Bumper bum(0x0C); 
 
 #include <arduino_encoder.h>
 Encoder enc1;
