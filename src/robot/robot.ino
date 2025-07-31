@@ -96,6 +96,4 @@ void loop() {
       Serial.println("Ошибка: Неверный формат команды");
     }
   }
-  
-  ServoUpdate();
 }

@@ -97,7 +97,7 @@ if __name__ == "__main__":
     arduino = ArduinoDriver('/dev/ttyACM0')
     arduino.start()
     sleep(2) # Иначе ардуинка не успевает включиться
-    arduino.runMotor(90,90)
+    arduino.runMotor(60,40)
     sleep(1)
     arduino.runMotor(0,0)
     arduino.enable = False
