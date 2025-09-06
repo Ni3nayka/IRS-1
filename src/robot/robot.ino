@@ -16,25 +16,31 @@
 
 
 #include <Robot_L298P.h>  // Библиотека для моторов
-#include <Servo.h>        // Библиотека для сервоприводов
+#include "myServo.h"      // Библиотека для сервоприводов
 
-// Массив сервоприводов (пины 2 и 9)
-Servo servos[2];
-const int servoPins[2] = {2, 9};
+// Массив пинов сервоприводов
+uint8_t servoPins[] = {2, 9};
+const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 
 void setup() {
   Serial.begin(9600);
   Robot.setup();  // Инициализация моторов
   
-  // Инициализация сервоприводов
-  for (int i = 0; i < 2; i++) {
-    servos[i].attach(servoPins[i]);
-    servos[i].write(90);  // Стартовое положение - 90 градусов
+  // Инициализация сервоприводов через нашу библиотеку
+  ServoController.setupServo(servoPins, servoCount);
+  
+  // Устанавливаем стартовое положение - 90 градусов
+  for (int i = 0; i < servoCount; i++) {
+    ServoController.servoWrite(i, 90);
   }
   
   Serial.println("Система готова. Форматы команд:");
   Serial.println("Моторы: m ЛЕВЫЙ_МОТОР ПРАВЫЙ_МОТОР");
   Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
+
+  Robot.motors(20, 0);
+  delay(1000);
+  Robot.motors(0, 0);
 }
 
 void loop() {
@@ -77,14 +83,16 @@ void loop() {
           int servoNum = servoNumStr.toInt() - 1;  // Нумерация с 1
           int angle = angleStr.toInt();
           
-          if (servoNum >= 0 && servoNum < 2) {
-            servos[servoNum].write(angle);
+          if (servoNum >= 0 && servoNum < servoCount) {
+            ServoController.servoWrite(servoNum, angle);
             Serial.print("Серва ");
             Serial.print(servoNum + 1);
             Serial.print(": Угол = ");
             Serial.println(angle);
           } else {
-            Serial.println("Ошибка: Недопустимый номер сервы (1 или 2)");
+            Serial.print("Ошибка: Недопустимый номер сервы (1-");
+            Serial.print(servoCount);
+            Serial.println(")");
           }
         }
       }
@@ -97,5 +105,6 @@ void loop() {
     }
   }
   
-  ServoUpdate();
+  // Обновление состояния сервоприводов
+  ServoController.servoUpdate();
 }
