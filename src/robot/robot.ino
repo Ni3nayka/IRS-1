@@ -4,16 +4,8 @@
 
    author: Egor Bakay <egor_bakay@inbox.ru> Ni3nayka
    write:  October 2024
-   modify: July 2025
+   modify: September 2025
 */
-  // Пример использования энкодеров
-  // Robot.reverse_enc_A();       // "Разворачиваем" энкодер на моторе A (если необходимо)
-  // Robot.reverse_enc_B();       // "Разворачиваем" энкодер на моторе B (если необходимо)
-  // Serial.println(Robot.enc_A); // Вывести значение с энкодера А
-  // Serial.println(Robot.enc_B); // Вывести значение с энкодера В
-  // Robot.enc_A = 0;             // Обнулим энкодер мотора А
-  // Robot.enc_A = 0;             // Обнулим энкодер мотора В
-
 
 #include <Robot_L298P.h>  // Библиотека для моторов
 #include "myServo.h"      // Библиотека для сервоприводов
@@ -26,6 +18,13 @@ void setup() {
   Serial.begin(9600);
   Robot.setup();  // Инициализация моторов
   
+  // Robot.reverse_enc_A();       // "Разворачиваем" энкодер на моторе A (если необходимо)
+  // Robot.reverse_enc_B();       // "Разворачиваем" энкодер на моторе B (если необходимо)
+  // Serial.println(Robot.enc_A); // Вывести значение с энкодера А
+  // Serial.println(Robot.enc_B); // Вывести значение с энкодера В
+  // Robot.enc_A = 0;             // Обнулим энкодер мотора А
+  // Robot.enc_A = 0;             // Обнулим энкодер мотора В
+
   // Инициализация сервоприводов через нашу библиотеку
   ServoController.setupServo(servoPins, servoCount);
   
@@ -37,6 +36,7 @@ void setup() {
   Serial.println("Система готова. Форматы команд:");
   Serial.println("Моторы: m ЛЕВЫЙ_МОТОР ПРАВЫЙ_МОТОР");
   Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
+  Serial.println("Энкодеры: e 0 0 - обнулить 1 1 - запросить");
 
   Robot.motors(20, 0);
   delay(1000);
@@ -96,8 +96,28 @@ void loop() {
           }
         }
       }
+      else if (command == "e") { // Тут короче лютейший говнокод, ибо время
+        int secondSpace = args.indexOf(' ');
+        if (secondSpace != -1) {
+          String servoNumStr = args.substring(0, secondSpace);
+          String angleStr = args.substring(secondSpace + 1);
+          
+          int servoNum = servoNumStr.toInt();  // Нумерация с 1
+          int angle = angleStr.toInt();
+          
+          if (angle==0 && servoNum==0) {
+            Robot.enc_A = 0;
+            Robot.enc_B = 0;
+            Serial.println("Энкодеры обнулены");
+          } else {
+            Serial.println("Показания энкодеров:");
+            Serial.println(-Robot.enc_B); // Энкодеры перепутаны местами
+            Serial.println(-Robot.enc_A);
+          }
+        }
+      }
       else {
-        Serial.println("Ошибка: Неизвестная команда. Используйте 'm' или 's'");
+        Serial.println("Ошибка: Неизвестная команда. Используйте 'm' или 's' или 'e'");
       }
     }
     else {
