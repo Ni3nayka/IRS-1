@@ -58,6 +58,7 @@ class arduino_usb(Thread):
             S = self.ser.readline()
             cleaned = self._clean_serial_data(S)
             self.mas.append(cleaned)
+            print(cleaned)
         return 0
 
     def available(self):
@@ -83,12 +84,18 @@ class ArduinoDriver(arduino_usb):
         left_speed = max(-100, min(100, int(left_speed)))
         right_speed = max(-100, min(100, int(right_speed)))
         cmd = f"m {left_speed} {right_speed}"
+        print(cmd)
         self.write(cmd)
 
     def RunServo(self, number, angle):
         # Управление сервоприводом. number — номер серво, angle — угол (0..180)
         angle = max(0, min(180, int(angle)))
         cmd = f"s {number} {angle}"
+        self.write(cmd)
+
+    def RunEnc(self, forward, right):
+        # движемся по энкодерам (читай мануал в коде ардуино)
+        cmd = f"E {forward} {right}"
         self.write(cmd)
 
 if __name__ == "__main__":
