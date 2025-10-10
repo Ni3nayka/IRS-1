@@ -4,17 +4,26 @@
 
    author: Egor Bakay <egor_bakay@inbox.ru> Ni3nayka
    write:  October 2024
-   modify: September 2025
+   modify: October 2025
 */
 
-#include <Robot_L298P.h>  // Библиотека для моторов
-#include "myServo.h"      // Библиотека для сервоприводов
+
+#include "BTS7960_PRO.h"  // Управление моторами
+#include <Servo.h>         // Стандартная библиотека для сервоприводов
+
 
 // Массив пинов сервоприводов
-uint8_t servoPins[] = {2, 9};
+const uint8_t servoPins[] = {2, 9};
 const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
+Servo servos[2];
 
-#define MOTOR_MOSFET_PIN A0
+
+// Подключаем файл с энкодерами
+#include "encoders.h"
+#include "gy-25.h" // Подключаем библиотеку гироскопа
+// Экземпляр гироскопа (указываем RX и TX пины)
+GY25 gy25(12, 8);
+unsigned long int gy25_lastPrintTime = 0;
 
 #define ENC_POROG 50
 #define ENC_TIME 500
@@ -31,75 +40,84 @@ const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 #define ENC_MOTOR_MAX_SPEED 70
 #define ENC_MOTOR_R_BOOST 1
 
+// Объявление объекта управления моторами
+BTS7960_PRO Motors;
+
 void runEnc(long int forward = 0, long int right = 0) {
-  if (forward!=0) right = 0;
-  long int enc_a_target = Robot.enc_A-forward*ENC_CM_TO_PARROT+right*ENC_ANGLE_TO_PARROT;
-  long int enc_b_target = Robot.enc_B-forward*ENC_CM_TO_PARROT-right*ENC_ANGLE_TO_PARROT;
-  long int time = millis()+ENC_TIME;
-  long int e_a_old = 0, e_b_old = 0;
-  while (time>millis()) {
-    if ((abs(Robot.enc_A-enc_a_target)>ENC_POROG) || abs(Robot.enc_B-enc_b_target)>ENC_POROG) {
-      time = millis()+ENC_TIME;
+  // Адаптировано под новые энкодеры и BTS7960_PRO
+  if (forward != 0) right = 0;
+  long int enc1_target = enc1_count - forward * ENC_CM_TO_PARROT + right * ENC_ANGLE_TO_PARROT;
+  long int enc2_target = enc2_count - forward * ENC_CM_TO_PARROT - right * ENC_ANGLE_TO_PARROT;
+  long int time = millis() + ENC_TIME;
+  long int e1_old = 0, e2_old = 0;
+  while (time > millis()) {
+    if ((abs(enc1_count - enc1_target) > ENC_POROG) || abs(enc2_count - enc2_target) > ENC_POROG) {
+      time = millis() + ENC_TIME;
     }
     // PID для движения тупо вперед
     // A
-    long int e_a = Robot.enc_A-enc_a_target;
-    long int p_a = e_a;
-    long int d_a = e_a - e_a_old;
-    e_a_old = e_a;
-    if (forward!=0) {
-      p_a*=ENC_FORWARD_KP;
-      d_a*=ENC_FORWARD_KD;
-    }
-    else {
-      p_a*=ENC_TURN_KP;
-      d_a*=ENC_TURN_KD;
+    long int e1 = enc1_count - enc1_target;
+    long int p1 = e1;
+    long int d1 = e1 - e1_old;
+    e1_old = e1;
+    if (forward != 0) {
+      p1 *= ENC_FORWARD_KP;
+      d1 *= ENC_FORWARD_KD;
+    } else {
+      p1 *= ENC_TURN_KP;
+      d1 *= ENC_TURN_KD;
     }
     // B
-    long int e_b = Robot.enc_B-enc_b_target;
-    long int p_b = e_b*ENC_FORWARD_KP;
-    long int d_b = (e_b - e_b_old);
-    e_b_old = e_b;
-    if (forward!=0) {
-      p_b*=ENC_FORWARD_KP;
-      d_b*=ENC_FORWARD_KD;
-    }
-    else {
-      p_b*=ENC_TURN_KP;
-      d_b*=ENC_TURN_KD;
+    long int e2 = enc2_count - enc2_target;
+    long int p2 = e2 * ENC_FORWARD_KP;
+    long int d2 = (e2 - e2_old);
+    e2_old = e2;
+    if (forward != 0) {
+      p2 *= ENC_FORWARD_KP;
+      d2 *= ENC_FORWARD_KD;
+    } else {
+      p2 *= ENC_TURN_KP;
+      d2 *= ENC_TURN_KD;
     }
     // PID чтобы двигаться прямо
-    long int e_d = (Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target); ///////////////////////////////////////// ДОДЕЛАТЬ
-    long int p_d = e_d*ENC_FORWARD_ALIGNMENT_KP;
-    if (forward!=0) {
+    long int e_d = (enc1_count - enc1_target) - (enc2_count - enc2_target); // ДОДЕЛАТЬ
+    long int p_d = e_d * ENC_FORWARD_ALIGNMENT_KP;
+    if (forward != 0) {
       // ..
-    }
-    else {
+    } else {
       p_d = 0;
     }
     // p_d = 0;
-    // моторы (энкодеры перепутаны местами)
-    long int m_a = constrain(p_a+d_a +p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED)*ENC_MOTOR_R_BOOST;
-    long int m_b = constrain(p_b+d_b -p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED);
-    Robot.motors(m_b, m_a);
-    // Serial.print(e_a);
+    // моторы
+    long int m1 = constrain(p1 + d1 + p_d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED) * ENC_MOTOR_R_BOOST;
+    long int m2 = constrain(p2 + d2 - p_d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
+    Motors.runs(m1, m2, 0, 0); // только два мотора
+    // Serial.print(e1);
     // Serial.print(" ");
-    // Serial.println(e_b);
+    // Serial.println(e2);
   }
-  Robot.motors(0, 0);
+  Motors.runs(0, 0, 0, 0);
 }
+
 
 void setup() {
   Serial.begin(9600);
-  Robot.setup();  // Инициализация моторов
-  ServoController.setupServo(servoPins, servoCount); // Инициализация сервоприводов через нашу библиотеку
-  pinMode(MOTOR_MOSFET_PIN,OUTPUT);
-  // Устанавливаем стартовое положение - 90 градусов
-  for (int i = 0; i < servoCount; i++) {
-    ServoController.servoWrite(i, 90);
+  Motors.setup();
+  gy25.setup();
+  for (uint8_t i = 0; i < servoCount; i++) {
+    servos[i].attach(servoPins[i]);
+    servos[i].write(90);
   }
+  pinMode(ENC1_A, INPUT_PULLUP);
+  pinMode(ENC1_B, INPUT_PULLUP);
+  pinMode(ENC2_A, INPUT_PULLUP);
+  pinMode(ENC2_B, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ENC1_A), enc1A_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC1_B), enc1B_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC2_A), enc2A_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENC2_B), enc2B_ISR, CHANGE);
   Serial.println("Система готова. Форматы команд:");
-  Serial.println("Моторы: m ЛЕВЫЙ_МОТОР ПРАВЫЙ_МОТОР");
+  Serial.println("Моторы: m 1_скорость 2_скорость");
   Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
   Serial.println("Энкодеры: e 0 0 - обнулить 1 1 - запросить");
   Serial.println("Движение по энкодерам: E 0 0 - forward right");
@@ -125,6 +143,18 @@ void setup() {
 }
 
 void loop() {
+  gy25.update();
+  // Выводим данные раз в 100 мс, не мешая вводу
+  if (millis() - gy25_lastPrintTime >= 100) {
+    gy25_lastPrintTime = millis();
+    Serial.print("GY25 horizontal_angle: ");
+    Serial.print(gy25.horizontal_angle);
+    Serial.print(" | ENC1: ");
+    Serial.print(enc1_count);
+    Serial.print(" ENC2: ");
+    Serial.println(enc2_count);
+  }
+  // ввод управяющих данных из монитора порта
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
     input.trim();
@@ -140,32 +170,23 @@ void loop() {
       if (command == "m") {
         int secondSpace = args.indexOf(' ');
         if (secondSpace != -1) {
-          String leftStr = args.substring(0, secondSpace);
-          String rightStr = args.substring(secondSpace + 1);
-          
-          int leftSpeed = leftStr.toInt();
-          int rightSpeed = rightStr.toInt();
-          
-          Robot.motors(leftSpeed, rightSpeed);
-          
-          Serial.print("Моторы: Левый = ");
-          Serial.print(leftSpeed);
-          Serial.print(", Правый = ");
-          Serial.println(rightSpeed);
+          int motorNum = args.substring(0, secondSpace).toInt();
+          int speed = args.substring(secondSpace + 1).toInt();
+          Motors.run(motorNum, speed);
+          Serial.print("Мотор ");
+          Serial.print(motorNum);
+          Serial.print(" запущен со скоростью ");
+          Serial.println(speed);
         }
       }
       // Обработка команды для сервоприводов
       else if (command == "s") {
         int secondSpace = args.indexOf(' ');
         if (secondSpace != -1) {
-          String servoNumStr = args.substring(0, secondSpace);
-          String angleStr = args.substring(secondSpace + 1);
-          
-          int servoNum = servoNumStr.toInt() - 1;  // Нумерация с 1
-          int angle = angleStr.toInt();
-          
+          int servoNum = args.substring(0, secondSpace).toInt() - 1;
+          int angle = args.substring(secondSpace + 1).toInt();
           if (servoNum >= 0 && servoNum < servoCount) {
-            ServoController.servoWrite(servoNum, angle);
+            servos[servoNum].write(angle);
             Serial.print("Серва ");
             Serial.print(servoNum + 1);
             Serial.print(": Угол = ");
@@ -180,38 +201,13 @@ void loop() {
       else if (command == "e") { // опросить энкодеры - Тут короче лютейший говнокод, ибо время
         int secondSpace = args.indexOf(' ');
         if (secondSpace != -1) {
-          String servoNumStr = args.substring(0, secondSpace);
-          String angleStr = args.substring(secondSpace + 1);
-          
-          int servoNum = servoNumStr.toInt();  // Нумерация с 1
-          int angle = angleStr.toInt();
-          
-          if (angle==0 && servoNum==0) {
-            Robot.enc_A = 0;
-            Robot.enc_B = 0;
+          int arg1 = args.substring(0, secondSpace).toInt();
+          int arg2 = args.substring(secondSpace + 1).toInt();
+          if (arg1 == 0 && arg2 == 0) {
+            resetEncoders();
             Serial.println("Энкодеры обнулены");
           } else {
-            Serial.println("Показания энкодеров:");
-            Serial.println(-Robot.enc_B); // Энкодеры перепутаны местами
-            Serial.println(-Robot.enc_A);
-          }
-        }
-      }
-      else if (command == "o") { // вкл/выкл мотора (на мосфете) - Тут короче лютейший говнокод, ибо время
-        // 0 0 - выкл
-        // 1 1 - вкл
-        int secondSpace = args.indexOf(' ');
-        if (secondSpace != -1) {
-          String servoNumStr = args.substring(0, secondSpace);
-          String angleStr = args.substring(secondSpace + 1);
-          
-          int servoNum = servoNumStr.toInt();  // Нумерация с 1
-          int angle = angleStr.toInt();
-          
-          if (angle==0 && servoNum==0) {
-            digitalWrite(MOTOR_MOSFET_PIN,0);
-          } else {
-            digitalWrite(MOTOR_MOSFET_PIN,1);
+            printEncoders();
           }
         }
       }
@@ -240,7 +236,4 @@ void loop() {
       Serial.println("Ошибка: Неверный формат команды");
     }
   }
-  
-  // Обновление состояния сервоприводов
-  ServoController.servoUpdate();
 }
