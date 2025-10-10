@@ -14,6 +14,8 @@
 uint8_t servoPins[] = {2, 9};
 const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 
+#define MOTOR_MOSFET_PIN A0
+
 #define ENC_POROG 50
 #define ENC_TIME 500
 
@@ -91,6 +93,7 @@ void setup() {
   Serial.begin(9600);
   Robot.setup();  // Инициализация моторов
   ServoController.setupServo(servoPins, servoCount); // Инициализация сервоприводов через нашу библиотеку
+  pinMode(MOTOR_MOSFET_PIN,OUTPUT);
   // Устанавливаем стартовое положение - 90 градусов
   for (int i = 0; i < servoCount; i++) {
     ServoController.servoWrite(i, 90);
@@ -111,14 +114,14 @@ void setup() {
 
   // runEnc(50);
 
-  runEnc(300);
-  delay(1000);
-  runEnc(0,180);
-  delay(1000);
-  runEnc(300);
-  delay(1000);
-  runEnc(0,-180);
-  delay(1000);
+  // runEnc(300);
+  // delay(1000);
+  // runEnc(0,180);
+  // delay(1000);
+  // runEnc(300);
+  // delay(1000);
+  // runEnc(0,-180);
+  // delay(1000);
 }
 
 void loop() {
@@ -191,6 +194,24 @@ void loop() {
             Serial.println("Показания энкодеров:");
             Serial.println(-Robot.enc_B); // Энкодеры перепутаны местами
             Serial.println(-Robot.enc_A);
+          }
+        }
+      }
+      else if (command == "o") { // вкл/выкл мотора (на мосфете) - Тут короче лютейший говнокод, ибо время
+        // 0 0 - выкл
+        // 1 1 - вкл
+        int secondSpace = args.indexOf(' ');
+        if (secondSpace != -1) {
+          String servoNumStr = args.substring(0, secondSpace);
+          String angleStr = args.substring(secondSpace + 1);
+          
+          int servoNum = servoNumStr.toInt();  // Нумерация с 1
+          int angle = angleStr.toInt();
+          
+          if (angle==0 && servoNum==0) {
+            digitalWrite(MOTOR_MOSFET_PIN,0);
+          } else {
+            digitalWrite(MOTOR_MOSFET_PIN,1);
           }
         }
       }
