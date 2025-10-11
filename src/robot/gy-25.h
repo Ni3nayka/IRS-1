@@ -17,17 +17,15 @@
 #define GY25_SERIAL_BOD 115200
 #endif
 
-#include <SoftwareSerial.h>
-
-// #ifndef GY25_SERIAL
-//   #if (defined(__AVR__))
-//   #include <SoftwareSerial.h>
-//   #elif (defined(ESP32)) 
-//   #include "SoftwareSerial.h" 
-//   #else
-//   #error "lib not supported this board"
-//   #endif
-// #endif
+#ifndef GY25_SERIAL
+  #if (defined(__AVR__))
+  #include <SoftwareSerial.h>
+  #elif (defined(ESP32)) 
+  #include "SoftwareSerial.h" 
+  #else
+  #error "lib not supported this board"
+  #endif
+#endif
 
 // SoftwareSerial mySerial(10, 11); // RX, TX
 
@@ -73,6 +71,7 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
           GY25::counter = 0;
           GY25::sign = 1;
         }
+        // Serial.println("!");
       }
       if (GY25::sign) {
         GY25::sign = 0;
@@ -125,6 +124,7 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
       GY25_SERIAL.write(a);
     }
     int available() {
+      // Serial.println(GY25_SERIAL.available());
       return GY25_SERIAL.available();
     }
     unsigned char read() {

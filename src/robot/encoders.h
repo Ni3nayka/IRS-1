@@ -1,28 +1,61 @@
+
+#pragma once
+
 // Пины энкодеров (аппаратные прерывания)
-#define ENC1_A 18
-#define ENC1_B 19
-#define ENC2_A 20
-#define ENC2_B 21
+#define ENC1_A 21
+#define ENC1_B 20
+#define ENC2_A 18
+#define ENC2_B 19
 
 volatile long enc1_count = 0;
 volatile long enc2_count = 0;
 
+int encoder1_a_old = 0;
+int encoder1_b_old = 0;
+int encoder2_a_old = 0;
+int encoder2_b_old = 0;
+
+int enc_update(int a0, int b0, int a1, int b1) {
+	if (!a0 && !b0 &&  a1 && !b1) return 1;
+	if ( a0 && !b0 &&  a1 &&  b1) return 1;
+	if ( a0 &&  b0 && !a1 &&  b1) return 1;
+	if (!a0 &&  b0 && !a1 && !b1) return 1;
+	if (!a0 && !b0 && !a1 &&  b1) return -1;
+	if (!a0 &&  b0 &&  a1 &&  b1) return -1;
+	if ( a0 &&  b0 &&  a1 && !b1) return -1;
+	if ( a0 && !b0 && !a1 && !b1) return -1;
+	return 0;
+
+}
+
 // Прерывания для энкодеров
 void enc1A_ISR() {
-	if (digitalRead(ENC1_B) == HIGH) enc1_count++;
-	else enc1_count--;
+	int a = digitalRead(ENC1_A);
+	int b = digitalRead(ENC1_B);
+	enc1_count += enc_update(encoder1_a_old,encoder1_b_old,a,b);
+	encoder1_a_old = a;
+	encoder1_b_old = b;
 }
 void enc1B_ISR() {
-	if (digitalRead(ENC1_A) == HIGH) enc1_count--;
-	else enc1_count++;
+	int a = digitalRead(ENC1_A);
+	int b = digitalRead(ENC1_B);
+	enc1_count += enc_update(encoder1_a_old,encoder1_b_old,a,b);
+	encoder1_a_old = a;
+	encoder1_b_old = b;
 }
 void enc2A_ISR() {
-	if (digitalRead(ENC2_B) == HIGH) enc2_count++;
-	else enc2_count--;
+	int a = digitalRead(ENC2_A);
+	int b = digitalRead(ENC2_B);
+	enc2_count += enc_update(encoder2_a_old,encoder2_b_old,a,b);
+	encoder2_a_old = a;
+	encoder2_b_old = b;
 }
 void enc2B_ISR() {
-	if (digitalRead(ENC2_A) == HIGH) enc2_count--;
-	else enc2_count++;
+	int a = digitalRead(ENC2_A);
+	int b = digitalRead(ENC2_B);
+	enc2_count += enc_update(encoder2_a_old,encoder2_b_old,a,b);
+	encoder2_a_old = a;
+	encoder2_b_old = b;
 }
 
 void resetEncoders() {
