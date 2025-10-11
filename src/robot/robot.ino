@@ -7,172 +7,7 @@
    modify: October 2025
 */
 
-
-#include "BTS7960_PRO.h"  // Управление моторами
-#include <Servo.h>         // Стандартная библиотека для сервоприводов
-
-
-// Массив пинов сервоприводов
-#define SERVO_QUANTITY 2
-const uint8_t servoPins[SERVO_QUANTITY] = {10, 11};
-const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
-Servo servos[SERVO_QUANTITY];
-int currentPositions[SERVO_QUANTITY] = {90, 90};
-
-
-// Подключаем файл с энкодерами
-#include "encoders.h"
-#define GY25_SERIAL Serial2
-#include "gy-25.h" // Подключаем библиотеку гироскопа
-// Экземпляр гироскопа (указываем RX и TX пины)
-GY25 gy25; // (12, 8);
-unsigned long int gy25_lastPrintTime = 0;
-
-#define ENC_POROG 50
-#define ENC_TIME 500
-#define ENC_GYRO_TURN_POROG 3
-
-#define ENC_FORWARD_KP 0.5
-#define ENC_FORWARD_KD 10
-#define ENC_FORWARD_ALIGNMENT_KP 20 // выравнивание колес друг относительно друга 
-#define ENC_TURN_KP 5.0
-#define ENC_TURN_KD 4
-#define ENC_GYRO_FORWARD_KP 15
-
-#define GYRO_TURN_KP 5
-#define GYRO_TURN_KD 40
-
-#define ENC_ANGLE_TO_PARROT 17
-#define ENC_CM_TO_PARROT 130
-
-#define ENC_MOTOR_MAX_SPEED 70 // 70
-#define ENC_MOTOR_MAX_SPEED_TURN 45
-#define ENC_MOTOR_R_BOOST 1.07
-
-// Объявление объекта управления моторами
-BTS7960_PRO Motors;
-
-void runGyro(long int forward = 0) {
-  // Адаптировано под новые энкодеры и BTS7960_PRO
-  // if (forward != 0) right = 0;
-  long int enc_target = enc1_count + forward * ENC_CM_TO_PARROT;
-  long int e_old = 0;
-  long int gyro_target = gy25.horizontal_angle +5; // чуть влево при старте
-  Motors.run(1, 100);
-  Motors.run(2, 70);
-  delay(400);
-  long int time = millis() + ENC_TIME;
-  while (time > millis()) {
-    gy25.update();
-    if ((abs(enc1_count - enc_target) > ENC_POROG)) {
-      time = millis() + ENC_TIME;
-    }
-    // PID для движения тупо вперед
-    long int e = enc_target-enc1_count;
-    long int p = e;
-    long int d = e - e_old;
-    e_old = e;
-    if (forward != 0) {
-      p *= ENC_FORWARD_KP;
-      d *= ENC_FORWARD_KD;
-    } else {
-      p *= ENC_TURN_KP;
-      d *= ENC_TURN_KD;
-    }
-
-    // PID чтобы двигаться прямо
-    long int e_gyro = gy25.horizontal_angle-gyro_target;
-    long int p_gyro = e_gyro*ENC_GYRO_FORWARD_KP;
-    // моторы
-    long int m1 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
-    long int m2 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
-    m1 = constrain(m1 + p_gyro, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED) * ENC_MOTOR_R_BOOST;
-    m2 = constrain(m2 - p_gyro, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
-    Motors.run(1, m1);
-    Motors.run(2, m2);
-    // Serial.print(e);
-    // Serial.print(" ");
-    // Serial.println(e_gyro);
-  }
-  Motors.run(1, 0);
-  Motors.run(2, 0);
-  // Motors.runs(0, 0, 0, 0);
-}
-
-void turnGyro(long int right=0) {
-  long int time = millis() + ENC_TIME;
-  long int e_old = 0;
-  long int gyro_target = gy25.horizontal_angle - right + 5; // чуть влево при старте
-  while (time > millis()) {
-    gy25.update();
-    if ((abs(gy25.horizontal_angle - gyro_target) > ENC_GYRO_TURN_POROG)) {
-      time = millis() + ENC_TIME;
-    }
-    long int e = gy25.horizontal_angle - gyro_target;
-    long int p = e;
-    long int d = e - e_old;
-    e_old = e;
-    p *= GYRO_TURN_KP;
-    d *= GYRO_TURN_KD;
-    long int m1 =  constrain(p + d, -ENC_MOTOR_MAX_SPEED_TURN, ENC_MOTOR_MAX_SPEED_TURN);
-    long int m2 = -constrain(p + d, -ENC_MOTOR_MAX_SPEED_TURN, ENC_MOTOR_MAX_SPEED_TURN);
-    Motors.run(1, m1);
-    Motors.run(2, m2);
-    // Serial.println(e);
-  }
-  /*gy25.update();
-  long int gyro_target = gy25.horizontal_angle - right*0.97; // чуть влево при старте
-  int m1 = ENC_MOTOR_MAX_SPEED;
-  int m2 = ENC_MOTOR_MAX_SPEED;
-  if (right<0) m1 *= -1;
-  else m2 *= -1;
-  Motors.run(1, m1);
-  Motors.run(2, m2);
-  while (abs(gy25.horizontal_angle - gyro_target) > ENC_GYRO_TURN_POROG) {
-    gy25.update();
-  }
-  Motors.run(1, -m1);
-  Motors.run(2, -m2);
-  delay(80);*/
-  Motors.run(1, 0);
-  Motors.run(2, 0);
-}
-
-
-void smoothMoveServo(int servoNum, int targetAngle, int speed=35) {
-  // Проверка корректности номера сервопривода
-  if (servoNum < 0 || servoNum >= SERVO_QUANTITY) {
-    return;
-  }
-  
-  // Проверка и ограничение угла
-  targetAngle = constrain(targetAngle, 0, 180);
-  
-  int startAngle = currentPositions[servoNum];
-  
-  // Определяем направление движения
-  if (targetAngle > startAngle) { ///////////////////////////////////
-    // Движение вперед
-    for (int angle = startAngle; angle <= targetAngle; angle++) {
-      servos[servoNum].write(angle);
-      currentPositions[servoNum] = angle;
-      delay(speed);
-      gy25.update();
-    }
-  } else {
-    // Движение назад
-    for (int angle = startAngle; angle >= targetAngle; angle--) {
-      Serial.println(speed);
-      servos[servoNum].write(angle);
-      currentPositions[servoNum] = angle;
-      delay(speed);
-      gy25.update();
-    }
-  }
-  // Если углы равны - ничего не делаем
-}
-
-
+#include "movies.h"
 
 void setup() {
   Serial.begin(9600);
@@ -184,14 +19,7 @@ void setup() {
     servos[i].write(90);
     gy25.update();
   }
-  pinMode(ENC1_A, INPUT_PULLUP);
-  pinMode(ENC1_B, INPUT_PULLUP);
-  pinMode(ENC2_A, INPUT_PULLUP);
-  pinMode(ENC2_B, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENC1_A), enc1A_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENC1_B), enc1B_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENC2_A), enc2A_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENC2_B), enc2B_ISR, CHANGE);
+  setupEncoders();
   Serial.println("Система готова. Форматы команд:");
   Serial.println("Моторы: m 1_скорость 2_скорость");
   Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
@@ -199,39 +27,7 @@ void setup() {
   Serial.println("Движение по энкодерам: E 0 0 - forward right");
   delay(1000);
   gy25.update();
-
-  // Motors.runs(-100, 100);
-  // delay(1000);
-  // Motors.runs(0, 0);
-
-  // runEnc(0,360);
-  // delay(2000);
-  // runEnc(0,-360);
-
-  // runGyro(320); // 320
-  // turnGyro(360);
-
-  // runGyro(100);
-  // delay(1000);
-  // turnGyro(180);
-  // delay(1000);
-  // runGyro(100);
-  // delay(1000);
-  // turnGyro(-180);
-  // delay(1000);
-
-  smoothMoveServo(0,180);
-  Motors.run(3, 100);
-  runGyro(120);
-  Motors.run(3, 0);
-  smoothMoveServo(0,90);
-  // delay(1000);
-  // turnGyro(180);
-  // delay(1000);
-  // runGyro(100);
-  // delay(1000);
-  // turnGyro(-180);
-  // delay(1000);
+  test();
 }
 
 void loop() {
@@ -249,6 +45,46 @@ void loop() {
   //   // testEnc();
   //   Serial.println();
   // }
+  serialDataParser();
+}
+
+void test() {
+  // Motors.runs(-100, 100);
+  // delay(1000);
+  // Motors.runs(0, 0);
+
+  // runEnc(0,360);
+  // delay(2000);
+  // runEnc(0,-360);
+
+  // runGyro(320); // 320
+  // turnGyro(360);
+
+  runGyro(100);
+  delay(1000);
+  turnGyro(180);
+  delay(1000);
+  runGyro(100);
+  delay(1000);
+  turnGyro(-180);
+  delay(1000);
+
+  // smoothMoveServo(0,180);
+  // Motors.run(3, 100);
+  // runGyro(120);
+  // Motors.run(3, 0);
+  // smoothMoveServo(0,90);
+
+  // delay(1000);
+  // turnGyro(180);
+  // delay(1000);
+  // runGyro(100);
+  // delay(1000);
+  // turnGyro(-180);
+  // delay(1000);
+}
+
+void serialDataParser() {
   // ввод управяющих данных из монитора порта
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');

@@ -58,6 +58,18 @@ void enc2B_ISR() {
 	encoder2_b_old = b;
 }
 
+// Инициализация энкодеров и прерываний
+void setupEncoders() {
+	pinMode(ENC1_A, INPUT_PULLUP);
+	pinMode(ENC1_B, INPUT_PULLUP);
+	pinMode(ENC2_A, INPUT_PULLUP);
+	pinMode(ENC2_B, INPUT_PULLUP);
+	attachInterrupt(digitalPinToInterrupt(ENC1_A), enc1A_ISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(ENC1_B), enc1B_ISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(ENC2_A), enc2A_ISR, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(ENC2_B), enc2B_ISR, CHANGE);
+}
+
 void resetEncoders() {
 	enc1_count = 0;
 	enc2_count = 0;
