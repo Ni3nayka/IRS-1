@@ -28,6 +28,7 @@ unsigned long int gy25_lastPrintTime = 0;
 
 #define ENC_POROG 50
 #define ENC_TIME 500
+#define ENC_GYRO_TURN_POROG 3
 
 #define ENC_FORWARD_KP 0.5
 #define ENC_FORWARD_KD 10
@@ -36,10 +37,14 @@ unsigned long int gy25_lastPrintTime = 0;
 #define ENC_TURN_KD 4
 #define ENC_GYRO_FORWARD_KP 15
 
+#define GYRO_TURN_KP 5
+#define GYRO_TURN_KD 40
+
 #define ENC_ANGLE_TO_PARROT 17
 #define ENC_CM_TO_PARROT 130
 
 #define ENC_MOTOR_MAX_SPEED 70 // 70
+#define ENC_MOTOR_MAX_SPEED_TURN 45
 #define ENC_MOTOR_R_BOOST 1
 
 // Объявление объекта управления моторами
@@ -90,7 +95,42 @@ void runGyro(long int forward = 0) {
 }
 
 void turnGyro(long int right=0) {
-
+  long int time = millis() + ENC_TIME;
+  long int e_old = 0;
+  long int gyro_target = gy25.horizontal_angle - right + 5; // чуть влево при старте
+  while (time > millis()) {
+    gy25.update();
+    if ((abs(gy25.horizontal_angle - gyro_target) > ENC_GYRO_TURN_POROG)) {
+      time = millis() + ENC_TIME;
+    }
+    long int e = gy25.horizontal_angle - gyro_target;
+    long int p = e;
+    long int d = e - e_old;
+    e_old = e;
+    p *= GYRO_TURN_KP;
+    d *= GYRO_TURN_KD;
+    long int m1 =  constrain(p + d, -ENC_MOTOR_MAX_SPEED_TURN, ENC_MOTOR_MAX_SPEED_TURN);
+    long int m2 = -constrain(p + d, -ENC_MOTOR_MAX_SPEED_TURN, ENC_MOTOR_MAX_SPEED_TURN);
+    Motors.run(1, m1);
+    Motors.run(2, m2);
+    // Serial.println(e);
+  }
+  /*gy25.update();
+  long int gyro_target = gy25.horizontal_angle - right*0.97; // чуть влево при старте
+  int m1 = ENC_MOTOR_MAX_SPEED;
+  int m2 = ENC_MOTOR_MAX_SPEED;
+  if (right<0) m1 *= -1;
+  else m2 *= -1;
+  Motors.run(1, m1);
+  Motors.run(2, m2);
+  while (abs(gy25.horizontal_angle - gyro_target) > ENC_GYRO_TURN_POROG) {
+    gy25.update();
+  }
+  Motors.run(1, -m1);
+  Motors.run(2, -m2);
+  delay(80);*/
+  Motors.run(1, 0);
+  Motors.run(2, 0);
 }
 
 void setup() {
@@ -127,15 +167,16 @@ void setup() {
   // delay(2000);
   // runEnc(0,-360);
 
-  runGyro(320); // 320
+  // runGyro(320); // 320
+  // turnGyro(360);
 
-  // runEnc(300);
+  // runGyro(320);
   // delay(1000);
-  // runEnc(0,180);
+  // turnGyro(180);
   // delay(1000);
-  // runEnc(300);
+  // runGyro(320);
   // delay(1000);
-  // runEnc(0,-180);
+  // turnGyro(-180);
   // delay(1000);
 }
 
