@@ -38,7 +38,8 @@ class arduino_usb(Thread):
         # Удаляет первые 2 и последние 5 символов
         S = str(S)
         if len(S) > 7:
-            return S[2:-5]
+            # return S[2:-5]
+            return S
         return ''
 
     def now_read(self):
@@ -51,8 +52,8 @@ class arduino_usb(Thread):
         self.ser.reset_input_buffer()
         self.ser.read_all()
 
-    def write(self, S):
-        if not self.enable:
+    def write(self, S, ignore_enable=0):
+        if not self.enable and not ignore_enable:
             return 0
         S = str(S) + '\n'
         self.ser.write(S.encode('utf-8'))
@@ -71,7 +72,7 @@ class arduino_usb(Thread):
         return int(bool(self.mas))
 
     def read(self):
-        if not self.enable or not self.mas:
+        if not self.enable or len(self.mas) == 0:
             return 0
         return self.mas.pop(0)
 
@@ -83,11 +84,18 @@ class arduino_usb(Thread):
         return self.mas.pop(0)
 
 class ArduinoDriver(arduino_usb):
-    def runMotor(self, left_speed, right_speed):
+    # def runMotor(self, left_speed, right_speed):
+    #     # Управление моторами. left_speed и right_speed — значения скоростей (например, -100..100)
+    #     left_speed = max(-100, min(100, int(left_speed)))
+    #     right_speed = max(-100, min(100, int(right_speed)))
+    #     cmd = f"m {left_speed} {right_speed}"
+    #     print(cmd)
+    #     self.write(cmd)
+    def runMotor(self, number, speed):
         # Управление моторами. left_speed и right_speed — значения скоростей (например, -100..100)
-        left_speed = max(-100, min(100, int(left_speed)))
-        right_speed = max(-100, min(100, int(right_speed)))
-        cmd = f"m {left_speed} {right_speed}"
+        speed = max(-100, min(100, int(speed)))
+        number = max(1, min(4, int(number)))
+        cmd = f"m {number} {speed}"
         print(cmd)
         self.write(cmd)
 
@@ -103,12 +111,21 @@ class ArduinoDriver(arduino_usb):
         cmd = f"E {forward} {right}"
         self.write(cmd)
 
+    def RunForward(self, forward):
+        self.flush()
+        cmd = f"E {forward} 0"
+        self.write(cmd)
+
+    def TurnRight(self, right):
+        self.flush()
+        cmd = f"E 0 {right}"
+        self.write(cmd)
+
     def CheckEnc(self):
-        if self.ser.available():
-            msg = self.ser.read()
-            return msg.strip().endswith("&")
-        
-        return False
+        msg = self.ser.readline().decode("utf-8")
+        print(msg)
+        return "&" in msg
+
 
 
 if __name__ == "__main__":
@@ -128,14 +145,13 @@ if __name__ == "__main__":
     #         print(arduino.read())
 
     # Test 2
-    arduino = ArduinoDriver('/dev/ttyACM0')
-    arduino.start()
-    sleep(2) # Иначе ардуинка не успевает включиться
-    arduino.RunEnc(120,0)
-    while not arduino.CheckEnc(): pass
-    arduino.RunEnc(0,180)
-    while not arduino.CheckEnc(): pass
-    arduino.RunEnc(120,0)
+    arduino = ArduinoDriver('/dev/ttyUSB1')
+    sleep(5)
+    arduino.RunForward("E 0 0")
+    print("Wait")
+    while 1:
+        print(arduino.ser.readline().decode("utf-8"))
+    
 
     arduino.enable = False
     
