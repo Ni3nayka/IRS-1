@@ -60,14 +60,21 @@ void test() {
   // runGyro(320); // 320
   // turnGyro(360);
 
-  runGyro(100);
-  delay(1000);
-  turnGyro(180);
-  delay(1000);
-  runGyro(100);
-  delay(1000);
-  turnGyro(-180);
-  delay(1000);
+  // runGyro(100);
+  // delay(1000);
+  // turnGyro(180);
+  // delay(1000);
+  // runGyro(100);
+  // delay(1000);
+  // turnGyro(-180);
+  // delay(1000);
+
+  for (int i = 0; i<16; i++) {
+    runGyro(100);
+    delay(1000);
+    turnGyro(90);
+    delay(1000);
+  }
 
   // smoothMoveServo(0,180);
   // Motors.run(3, 100);

@@ -59,9 +59,9 @@ unsigned long int gy25_lastPrintTime = 0;
 #define ENC_FORWARD_ALIGNMENT_KP 20 // выравнивание колес друг относительно друга 
 #define ENC_TURN_KP 5.0
 #define ENC_TURN_KD 4
-#define ENC_GYRO_FORWARD_KP 15
+#define ENC_GYRO_FORWARD_KP 3
 
-#define GYRO_TURN_KP 5
+#define GYRO_TURN_KP 8
 #define GYRO_TURN_KD 40
 
 #define ENC_ANGLE_TO_PARROT 17
@@ -85,7 +85,7 @@ void runGyro(long int forward) {
 	long int e_old = 0;
 	long int gyro_target = gy25.horizontal_angle + 5;
 	Motors.run(1, 100);
-	Motors.run(2, 70);
+	Motors.run(2, 100);
 	delay(400);
 	long int time = millis() + ENC_TIME;
 	while (time > millis()) {
