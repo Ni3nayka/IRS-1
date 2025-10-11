@@ -17,31 +17,45 @@ const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 #define ENC_POROG 50
 #define ENC_TIME 500
 
-#define ENC_FORWARD_KP 0.5
-#define ENC_FORWARD_KD 10
-#define ENC_FORWARD_ALIGNMENT_KP 20 // выравнивание колес друг относительно друга 
+#define ENC_FORWARD_KP 1
+#define ENC_FORWARD_KD 2
+#define ENC_FORWARD_ALIGNMENT_KP 5 // выравнивание колес друг относительно друга 
+#define ENC_FORWARD_ALIGNMENT_KI 0 // выравнивание колес друг относительно друга 
 #define ENC_TURN_KP 5.0
 #define ENC_TURN_KD 4
 
-#define ENC_ANGLE_TO_PARROT 17
-#define ENC_CM_TO_PARROT 125
+#define ENC_ANGLE_TO_PARROT 8.88
+#define ENC_CM_TO_PARROT 64.5
 
 #define ENC_MOTOR_MAX_SPEED 70
-#define ENC_MOTOR_R_BOOST 1
+#define ENC_MOTOR_R_BOOST 0.9
 
 void runEnc(long int forward = 0, long int right = 0) {
   if (forward!=0) right = 0;
-  long int enc_a_target = Robot.enc_A-forward*ENC_CM_TO_PARROT+right*ENC_ANGLE_TO_PARROT;
-  long int enc_b_target = Robot.enc_B-forward*ENC_CM_TO_PARROT-right*ENC_ANGLE_TO_PARROT;
+  long int enc_a_target = Robot.enc_A+forward*ENC_CM_TO_PARROT+right*ENC_ANGLE_TO_PARROT;
+  long int enc_b_target = Robot.enc_B+forward*ENC_CM_TO_PARROT-right*ENC_ANGLE_TO_PARROT;
+  //slow start
+  if (forward!=0) {
+    for (int i = 0; i<ENC_MOTOR_MAX_SPEED; i++) {
+      long int e_d = (Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target); ///////////////////////////////////////// ДОДЕЛАТЬ
+      e_d*=ENC_FORWARD_ALIGNMENT_KP;
+      // моторы (энкодеры перепутаны местами)
+      long int m_a = constrain(i-e_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED);
+      long int m_b = constrain(i+e_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED)*ENC_MOTOR_R_BOOST;
+      Robot.motors(m_a, m_b);
+      delay(4);
+    }
+  }
   long int time = millis()+ENC_TIME;
   long int e_a_old = 0, e_b_old = 0;
+  long int i_d = 0;
   while (time>millis()) {
     if ((abs(Robot.enc_A-enc_a_target)>ENC_POROG) || abs(Robot.enc_B-enc_b_target)>ENC_POROG) {
       time = millis()+ENC_TIME;
     }
     // PID для движения тупо вперед
     // A
-    long int e_a = Robot.enc_A-enc_a_target;
+    long int e_a = enc_a_target-Robot.enc_A;
     long int p_a = e_a;
     long int d_a = e_a - e_a_old;
     e_a_old = e_a;
@@ -54,7 +68,7 @@ void runEnc(long int forward = 0, long int right = 0) {
       d_a*=ENC_TURN_KD;
     }
     // B
-    long int e_b = Robot.enc_B-enc_b_target;
+    long int e_b = enc_b_target-Robot.enc_B;
     long int p_b = e_b*ENC_FORWARD_KP;
     long int d_b = (e_b - e_b_old);
     e_b_old = e_b;
@@ -68,7 +82,8 @@ void runEnc(long int forward = 0, long int right = 0) {
     }
     // PID чтобы двигаться прямо
     long int e_d = (Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target); ///////////////////////////////////////// ДОДЕЛАТЬ
-    long int p_d = e_d*ENC_FORWARD_ALIGNMENT_KP;
+    i_d = e_d + i_d*0.96;
+    long int p_d = e_d*ENC_FORWARD_ALIGNMENT_KP + i_d*ENC_FORWARD_ALIGNMENT_KI;
     if (forward!=0) {
       // ..
     }
@@ -77,9 +92,9 @@ void runEnc(long int forward = 0, long int right = 0) {
     }
     // p_d = 0;
     // моторы (энкодеры перепутаны местами)
-    long int m_a = constrain(p_a+d_a +p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED)*ENC_MOTOR_R_BOOST;
-    long int m_b = constrain(p_b+d_b -p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED);
-    Robot.motors(m_b, m_a);
+    long int m_a = constrain(p_a+d_a -p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED);
+    long int m_b = constrain(p_b+d_b +p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED)*ENC_MOTOR_R_BOOST;
+    Robot.motors(m_a, m_b);
     // Serial.print(e_a);
     // Serial.print(" ");
     // Serial.println(e_b);
@@ -111,14 +126,23 @@ void setup() {
 
   // runEnc(50);
 
-  runEnc(300);
-  delay(1000);
-  runEnc(0,180);
-  delay(1000);
-  runEnc(300);
-  delay(1000);
-  runEnc(0,-180);
-  delay(1000);
+  delay(3000);
+
+  for (int i = 0; i<8; i++) {
+    runEnc(80);
+    // delay(1000);
+    runEnc(0,90);
+    // delay(1000);
+  }
+
+  // runEnc(100);
+  // delay(1000);
+  // runEnc(0,180);
+  // delay(1000);
+  // runEnc(100);
+  // delay(1000);
+  // runEnc(0,-180);
+  // delay(1000);
 }
 
 void loop() {
@@ -189,8 +213,8 @@ void loop() {
             Serial.println("Энкодеры обнулены");
           } else {
             Serial.println("Показания энкодеров:");
-            Serial.println(-Robot.enc_B); // Энкодеры перепутаны местами
-            Serial.println(-Robot.enc_A);
+            Serial.println(Robot.enc_A); // Энкодеры перепутаны местами
+            Serial.println(Robot.enc_B);
           }
         }
       }
