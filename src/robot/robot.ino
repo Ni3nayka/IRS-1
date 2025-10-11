@@ -13,9 +13,11 @@
 
 
 // Массив пинов сервоприводов
-const uint8_t servoPins[] = {10, 11};
+#define SERVO_QUANTITY 2
+const uint8_t servoPins[SERVO_QUANTITY] = {10, 11};
 const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
-Servo servos[2];
+Servo servos[SERVO_QUANTITY];
+int currentPositions[SERVO_QUANTITY] = {90, 90};
 
 
 // Подключаем файл с энкодерами
@@ -45,7 +47,7 @@ unsigned long int gy25_lastPrintTime = 0;
 
 #define ENC_MOTOR_MAX_SPEED 70 // 70
 #define ENC_MOTOR_MAX_SPEED_TURN 45
-#define ENC_MOTOR_R_BOOST 1
+#define ENC_MOTOR_R_BOOST 1.07
 
 // Объявление объекта управления моторами
 BTS7960_PRO Motors;
@@ -54,9 +56,12 @@ void runGyro(long int forward = 0) {
   // Адаптировано под новые энкодеры и BTS7960_PRO
   // if (forward != 0) right = 0;
   long int enc_target = enc1_count + forward * ENC_CM_TO_PARROT;
-  long int time = millis() + ENC_TIME;
   long int e_old = 0;
   long int gyro_target = gy25.horizontal_angle +5; // чуть влево при старте
+  Motors.run(1, 100);
+  Motors.run(2, 70);
+  delay(400);
+  long int time = millis() + ENC_TIME;
   while (time > millis()) {
     gy25.update();
     if ((abs(enc1_count - enc_target) > ENC_POROG)) {
@@ -133,6 +138,42 @@ void turnGyro(long int right=0) {
   Motors.run(2, 0);
 }
 
+
+void smoothMoveServo(int servoNum, int targetAngle, int speed=35) {
+  // Проверка корректности номера сервопривода
+  if (servoNum < 0 || servoNum >= SERVO_QUANTITY) {
+    return;
+  }
+  
+  // Проверка и ограничение угла
+  targetAngle = constrain(targetAngle, 0, 180);
+  
+  int startAngle = currentPositions[servoNum];
+  
+  // Определяем направление движения
+  if (targetAngle > startAngle) { ///////////////////////////////////
+    // Движение вперед
+    for (int angle = startAngle; angle <= targetAngle; angle++) {
+      servos[servoNum].write(angle);
+      currentPositions[servoNum] = angle;
+      delay(speed);
+      gy25.update();
+    }
+  } else {
+    // Движение назад
+    for (int angle = startAngle; angle >= targetAngle; angle--) {
+      Serial.println(speed);
+      servos[servoNum].write(angle);
+      currentPositions[servoNum] = angle;
+      delay(speed);
+      gy25.update();
+    }
+  }
+  // Если углы равны - ничего не делаем
+}
+
+
+
 void setup() {
   Serial.begin(9600);
   Motors.setup();
@@ -170,11 +211,24 @@ void setup() {
   // runGyro(320); // 320
   // turnGyro(360);
 
-  // runGyro(320);
+  // runGyro(100);
   // delay(1000);
   // turnGyro(180);
   // delay(1000);
-  // runGyro(320);
+  // runGyro(100);
+  // delay(1000);
+  // turnGyro(-180);
+  // delay(1000);
+
+  smoothMoveServo(0,180);
+  Motors.run(3, 100);
+  runGyro(120);
+  Motors.run(3, 0);
+  smoothMoveServo(0,90);
+  // delay(1000);
+  // turnGyro(180);
+  // delay(1000);
+  // runGyro(100);
   // delay(1000);
   // turnGyro(-180);
   // delay(1000);
@@ -184,17 +238,17 @@ void loop() {
   gy25.update();
   // Motors.runs(30, 30);
   // Выводим данные раз в 100 мс, не мешая вводу
-  if (millis() - gy25_lastPrintTime >= 100) {
-    gy25_lastPrintTime = millis();
-    Serial.print("GY25 horizontal_angle: ");
-    Serial.print(gy25.horizontal_angle);
-    Serial.print("  ENC1: ");
-    Serial.print(enc1_count);
-    Serial.print("  ENC2: ");
-    Serial.print(enc2_count);
-    // testEnc();
-    Serial.println();
-  }
+  // if (millis() - gy25_lastPrintTime >= 100) {
+  //   gy25_lastPrintTime = millis();
+  //   Serial.print("GY25 horizontal_angle: ");
+  //   Serial.print(gy25.horizontal_angle);
+  //   Serial.print("  ENC1: ");
+  //   Serial.print(enc1_count);
+  //   Serial.print("  ENC2: ");
+  //   Serial.print(enc2_count);
+  //   // testEnc();
+  //   Serial.println();
+  // }
   // ввод управяющих данных из монитора порта
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
@@ -227,7 +281,8 @@ void loop() {
           int servoNum = args.substring(0, secondSpace).toInt() - 1;
           int angle = args.substring(secondSpace + 1).toInt();
           if (servoNum >= 0 && servoNum < servoCount) {
-            servos[servoNum].write(angle);
+            smoothMoveServo(servoNum,angle);
+            // servos[servoNum].write(angle);
             Serial.print("Серва ");
             Serial.print(servoNum + 1);
             Serial.print(": Угол = ");
@@ -265,6 +320,8 @@ void loop() {
           int right = angleStr.toInt();
 
           Serial.println("Едем по энкодерам");
+          // Serial.println(forward);
+          // Serial.println(right);
           if (forward!=0) runGyro(forward);
           else turnGyro(right);
           Serial.println("Доехали по энкодерам &"); // & - символ, чтобы детектить его в выводе на компе
