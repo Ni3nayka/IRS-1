@@ -47,6 +47,10 @@ class arduino_usb(Thread):
         S = self.ser.readline()
         return self._clean_serial_data(S)
 
+    def flush(self):
+        self.ser.reset_input_buffer()
+        self.ser.read_all()
+
     def write(self, S):
         if not self.enable:
             return 0
@@ -95,12 +99,22 @@ class ArduinoDriver(arduino_usb):
 
     def RunEnc(self, forward, right):
         # движемся по энкодерам (читай мануал в коде ардуино)
+        self.flush()
         cmd = f"E {forward} {right}"
         self.write(cmd)
+
+    def CheckEnc(self):
+        if self.ser.available():
+            msg = self.ser.read()
+            return msg.strip().endswith("&")
+        
+        return False
+
 
 if __name__ == "__main__":
     from time import sleep
     # arduino = ArduinoDriver('/dev/ttyUSB0')
+    '''
     arduino = ArduinoDriver('/dev/ttyACM0')
     arduino.start()
     sleep(2) # Иначе ардуинка не успевает включиться
@@ -108,8 +122,22 @@ if __name__ == "__main__":
     sleep(1)
     arduino.runMotor(0,0)
     arduino.enable = False
+    '''
     # while (0):
     #     if (arduino.available()):
     #         print(arduino.read())
+
+    # Test 2
+    arduino = ArduinoDriver('/dev/ttyACM0')
+    arduino.start()
+    sleep(2) # Иначе ардуинка не успевает включиться
+    arduino.RunEnc(120,0)
+    while not arduino.CheckEnc(): pass
+    arduino.RunEnc(0,180)
+    while not arduino.CheckEnc(): pass
+    arduino.RunEnc(120,0)
+
+    arduino.enable = False
+    
 else:
     pass
