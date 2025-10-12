@@ -28,9 +28,10 @@ const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 #define ENC_CM_TO_PARROT 64.5
 
 #define ENC_MOTOR_MAX_SPEED 70
+#define ENC_MOTOR_MAX_SPEED_SLOW 30
 #define ENC_MOTOR_R_BOOST 0.9
 
-void runEnc(long int forward = 0, long int right = 0) {
+void runEnc(long int forward = 0, long int right = 0, int max_speed=ENC_MOTOR_MAX_SPEED) {
   if (forward!=0) right = 0;
   long int enc_a_target = Robot.enc_A+forward*ENC_CM_TO_PARROT+right*ENC_ANGLE_TO_PARROT;
   long int enc_b_target = Robot.enc_B+forward*ENC_CM_TO_PARROT-right*ENC_ANGLE_TO_PARROT;
