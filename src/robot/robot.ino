@@ -17,6 +17,7 @@ void setup() {
   digitalWrite(MOSFET_PIN,0);
   // gy25.calibration();
   Serial2.begin(115200); // ПОТОМУ ЧТО ТУПАЯ АРДУИНА 
+  Serial1.begin(9600);
   for (uint8_t i = 0; i < servoCount; i++) {
     servos[i].attach(servoPins[i]);
     servos[i].write(90);
@@ -65,11 +66,10 @@ void test() {
   // runGyro(320); // 320
   // turnGyro(360);
 
-  turnGyro(-90);
-  digitalWrite(MOSFET_PIN,1);
-  delay(500);
-  runGyro(200);
-  digitalWrite(MOSFET_PIN,0);
+
+  // delay(500);
+  // runGyro(200);
+
   // delay(1000);
   // turnGyro(180);
   // delay(1000);
@@ -98,6 +98,34 @@ void test() {
   // delay(1000);
   // turnGyro(-180);
   // delay(1000);
+  Serial.println("start");
+  turnGyro(-90);
+  runGyro(22);
+  turnGyro(88);
+  delay(1000);
+  Serial.println("start point 1 - 1/2");
+  digitalWrite(MOSFET_PIN,1);
+  delay(1000);
+  runGyro(135);
+  digitalWrite(MOSFET_PIN,0);
+  Serial.println("end point 1 - 1/2");
+  delay(1000);
+  turnGyro(90);
+  runGyro(50);
+  turnGyro(90);
+  delay(1000);
+  Serial.println("start point 1 - 2/2");
+  digitalWrite(MOSFET_PIN,1);
+  delay(1000);
+  runGyro(140);
+  digitalWrite(MOSFET_PIN,0);
+  Serial.println("end point 1 - 2/2");
+  // delay(1000);
+  // turnGyro(90);
+  // runGyro(30);
+  Serial.println("end");
+  // turnGyro(90);
+  
 }
 
 void serialDataParser() {

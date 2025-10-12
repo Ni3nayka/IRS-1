@@ -69,7 +69,7 @@ unsigned long int gy25_lastPrintTime = 0;
 #define ENC_CM_TO_PARROT 120 //130
 
 #define ENC_MOTOR_MAX_SPEED 70 // 70
-#define ENC_MOTOR_MAX_SPEED_TURN 45
+#define ENC_MOTOR_MAX_SPEED_TURN 70
 #define ENC_MOTOR_R_BOOST 1 //1.07 // ОН ОТВЕЧАЕТ ЗА ЛЕВЫЙ МОТОР!!!
 
 // Объявление объекта управления моторами
@@ -82,7 +82,7 @@ void smoothMoveServo(int servoNum, int targetAngle, int speed = 35);
 
 long int enc_strafe = 0;
 unsigned long int enc_strafe_timer = 0;
-#define GYRO_STRAFE_DT 2100
+#define GYRO_STRAFE_DT 1500 // 2100
 #define GYRO_STRAFE_ANDLE -1 // подруливать в: 1 - вправо, -1 - влево
 
 void updateGyroStrafe() {
