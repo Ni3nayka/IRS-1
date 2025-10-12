@@ -10,6 +10,9 @@
 #include <Robot_L298P.h>  // Библиотека для моторов
 #include "myServo.h"      // Библиотека для сервоприводов
 
+#define MOTOR_MOSFET_PIN A0
+// #define MOTOR_MOSFET_SPEED 200
+
 // Массив пинов сервоприводов
 uint8_t servoPins[] = {2, 9};
 const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
@@ -24,25 +27,36 @@ const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 #define ENC_TURN_KP 5.0
 #define ENC_TURN_KD 4
 
-#define ENC_ANGLE_TO_PARROT 8.88
+/*
+24309 24054
+27061 26893
+28504 28342
+*/ 
+#define ENC_BETWEEN_ERROR_RIGHT_K 1.0075
+
+#define ENC_ANGLE_TO_PARROT 7.43 //8.88
 #define ENC_CM_TO_PARROT 64.5
 
 #define ENC_MOTOR_MAX_SPEED 70
-#define ENC_MOTOR_MAX_SPEED_SLOW 30
-#define ENC_MOTOR_R_BOOST 0.9
+#define ENC_MOTOR_MAX_SPEED_SLOW 40
+#define SLOW ENC_MOTOR_MAX_SPEED_SLOW
+#define ENC_MOTOR_R_BOOST 0.92 //0.9
 
-void runEnc(long int forward = 0, long int right = 0, int max_speed=ENC_MOTOR_MAX_SPEED) {
-  if (forward!=0) right = 0;
-  long int enc_a_target = Robot.enc_A+forward*ENC_CM_TO_PARROT+right*ENC_ANGLE_TO_PARROT;
-  long int enc_b_target = Robot.enc_B+forward*ENC_CM_TO_PARROT-right*ENC_ANGLE_TO_PARROT;
+unsigned long int debug_time = 0;
+
+void runEnc(long int forward = 0, long int right_angle = 0, int max_speed=ENC_MOTOR_MAX_SPEED) {
+  if (forward!=0) right_angle = 0;
+  long int enc_a_target = Robot.enc_A+forward*ENC_CM_TO_PARROT+right_angle*ENC_ANGLE_TO_PARROT;
+  long int enc_b_target = Robot.enc_B+forward*ENC_CM_TO_PARROT-right_angle*ENC_ANGLE_TO_PARROT;
+  enc_b_target /= ENC_BETWEEN_ERROR_RIGHT_K;
   //slow start
   if (forward!=0) {
-    for (int i = 0; i<ENC_MOTOR_MAX_SPEED; i++) {
-      long int e_d = (Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target); ///////////////////////////////////////// ДОДЕЛАТЬ
+    for (int i = 0; i<max_speed; i++) {
+      long int e_d = 0;//(Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target)*ENC_BETWEEN_ERROR_RIGHT_K; ///////////////////////////////////////// ДОДЕЛАТЬ
       e_d*=ENC_FORWARD_ALIGNMENT_KP;
       // моторы (энкодеры перепутаны местами)
-      long int m_a = constrain(i-e_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED);
-      long int m_b = constrain(i+e_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED)*ENC_MOTOR_R_BOOST;
+      long int m_a = constrain(i-e_d, -max_speed,max_speed);
+      long int m_b = constrain(i+e_d, -max_speed,max_speed)*ENC_MOTOR_R_BOOST;
       Robot.motors(m_a, m_b);
       delay(4);
     }
@@ -69,7 +83,7 @@ void runEnc(long int forward = 0, long int right = 0, int max_speed=ENC_MOTOR_MA
       d_a*=ENC_TURN_KD;
     }
     // B
-    long int e_b = enc_b_target-Robot.enc_B;
+    long int e_b = (enc_b_target-Robot.enc_B)*ENC_BETWEEN_ERROR_RIGHT_K;
     long int p_b = e_b*ENC_FORWARD_KP;
     long int d_b = (e_b - e_b_old);
     e_b_old = e_b;
@@ -82,7 +96,7 @@ void runEnc(long int forward = 0, long int right = 0, int max_speed=ENC_MOTOR_MA
       d_b*=ENC_TURN_KD;
     }
     // PID чтобы двигаться прямо
-    long int e_d = (Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target); ///////////////////////////////////////// ДОДЕЛАТЬ
+    long int e_d = 0;//(Robot.enc_A-enc_a_target)-(Robot.enc_B-enc_b_target)*ENC_BETWEEN_ERROR_RIGHT_K; ///////////////////////////////////////// ДОДЕЛАТЬ
     i_d = e_d + i_d*0.96;
     long int p_d = e_d*ENC_FORWARD_ALIGNMENT_KP + i_d*ENC_FORWARD_ALIGNMENT_KI;
     if (forward!=0) {
@@ -93,14 +107,26 @@ void runEnc(long int forward = 0, long int right = 0, int max_speed=ENC_MOTOR_MA
     }
     // p_d = 0;
     // моторы (энкодеры перепутаны местами)
-    long int m_a = constrain(p_a+d_a -p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED);
-    long int m_b = constrain(p_b+d_b +p_d, -ENC_MOTOR_MAX_SPEED,ENC_MOTOR_MAX_SPEED)*ENC_MOTOR_R_BOOST;
+    long int m_a = constrain(p_a+d_a -p_d, -max_speed,max_speed);
+    long int m_b = constrain(p_b+d_b +p_d, -max_speed,max_speed)*ENC_MOTOR_R_BOOST;
     Robot.motors(m_a, m_b);
     // Serial.print(e_a);
     // Serial.print(" ");
     // Serial.println(e_b);
   }
   Robot.motors(0, 0);
+}
+
+void forward(long int forward = 0, int max_speed=ENC_MOTOR_MAX_SPEED) {
+  runEnc(forward,0,max_speed);
+}
+
+void right(long int right_angle = 0) {
+  runEnc(0,right_angle);
+}
+
+void left(long int right_angle = 0) {
+  runEnc(0,-right_angle);
 }
 
 void setup() {
@@ -111,6 +137,7 @@ void setup() {
   for (int i = 0; i < servoCount; i++) {
     ServoController.servoWrite(i, 90);
   }
+  pinMode(MOTOR_MOSFET_PIN,OUTPUT);
   Serial.println("Система готова. Форматы команд:");
   Serial.println("Моторы: m ЛЕВЫЙ_МОТОР ПРАВЫЙ_МОТОР");
   Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
@@ -127,14 +154,14 @@ void setup() {
 
   // runEnc(50);
 
-  delay(3000);
+  // delay(3000);
 
-  for (int i = 0; i<8; i++) {
-    runEnc(80);
-    // delay(1000);
-    runEnc(0,90);
-    // delay(1000);
-  }
+  // for (int i = 0; i<8; i++) {
+  //   runEnc(80);
+  //   // delay(1000);
+  //   runEnc(0,90);
+  //   // delay(1000);
+  // }
 
   // runEnc(100);
   // delay(1000);
@@ -144,9 +171,22 @@ void setup() {
   // delay(1000);
   // runEnc(0,-180);
   // delay(1000);
+
+  delay(3000);
+  test();
+  digitalWrite(MOTOR_MOSFET_PIN, 0);
+  Robot.motors(0, 0);
 }
 
 void loop() {
+
+  // if (debug_time<millis()) {
+  //   Serial.print(Robot.enc_A);
+  //   Serial.print(" ");
+  //   Serial.println(Robot.enc_B);
+  //   debug_time = millis()+500;
+  // }
+
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
     input.trim();
@@ -247,4 +287,16 @@ void loop() {
   
   // Обновление состояния сервоприводов
   ServoController.servoUpdate();
+}
+
+
+void test() {
+  //runEnc(0,90);
+  digitalWrite(MOTOR_MOSFET_PIN, 1);
+  delay(1000);
+  Robot.motors(80, 100);
+  delay(3000);
+  // forward(100,SLOW); 
+  // right(90);
+  // right(720);
 }
