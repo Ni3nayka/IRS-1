@@ -98,34 +98,95 @@ void test() {
   // delay(1000);
   // turnGyro(-180);
   // delay(1000);
-  Serial.println("start");
+
+  // turnGyro(180);
+  // turnGyro(-180);
+  // return;
+
+
+
+  // Serial.println("start");
   turnGyro(-90);
   runGyro(22);
-  turnGyro(88);
+  turnGyro(88);//////////////////////////////////////////////
   delay(1000);
   Serial.println("start point 1 - 1/2");
-  digitalWrite(MOSFET_PIN,1);
-  delay(1000);
+  OnMosfet();
   runGyro(135);
-  digitalWrite(MOSFET_PIN,0);
+  OffMosfet();
   Serial.println("end point 1 - 1/2");
-  delay(1000);
   turnGyro(90);
   runGyro(50);
   turnGyro(90);
   delay(1000);
   Serial.println("start point 1 - 2/2");
-  digitalWrite(MOSFET_PIN,1);
-  delay(1000);
+  OnMosfet();
   runGyro(140);
-  digitalWrite(MOSFET_PIN,0);
   Serial.println("end point 1 - 2/2");
-  delay(1000);
+  OffMosfet();
+
+  // test 1
   turnGyro(90);
   runGyro(25);
   Serial.println("end");
+
+  // test 2
+  // turnGyro(-90);
+  // runGyro(25);
+  // turnGyro(-90);
+  // wallBack();
+  // OnMosfet();
+  // runGyro(293);
+  // OffMosfet();
+  // turnGyro(83);
+  // OnMosfet();
+  // runGyro(150);
+  // Motors.run(1, 70);
+  // Motors.run(2, 70);
+  // gyroDelay(5000);
+  // Motors.run(1, 0);
+  // Motors.run(2, 0);
+  // gyroDelay(1000);
+  // OffMosfet();
+
   // turnGyro(90);
   
+}
+
+void gyroDelay(long int t) {
+  for (t += millis(); t>millis();) {
+    updateGyroStrafe();
+  }
+}
+
+void OnMosfet() {
+  gyroDelay(1000);
+  digitalWrite(MOSFET_PIN,1);
+  gyroDelay(1000);
+}
+void OffMosfet() {
+  gyroDelay(1000);
+  digitalWrite(MOSFET_PIN,0);
+  gyroDelay(1000);
+}
+
+
+void wallBack() { // выравнивание по стенке
+  Motors.run(1, 0);
+  Motors.run(2, 0);
+  gyroDelay(1000);
+  Motors.run(1, -40);
+  Motors.run(2, -40);
+  gyroDelay(2000);
+  Motors.run(1, 0);
+  Motors.run(2, 0);
+  gyroDelay(1000);
+  // Motors.run(1, 40);
+  // Motors.run(2, 40);
+  // gyroDelay(500);
+  // Motors.run(1, 0);
+  // Motors.run(2, 0);
+  // gyroDelay(1000); 
 }
 
 void serialDataParser() {

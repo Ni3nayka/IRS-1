@@ -62,8 +62,8 @@ unsigned long int gy25_lastPrintTime = 0;
 #define ENC_TURN_KD 4
 #define ENC_GYRO_FORWARD_KP 3
 
-#define GYRO_TURN_KP 8 // 8
-#define GYRO_TURN_KD 40 // 40
+#define GYRO_TURN_KP 7 // 8
+#define GYRO_TURN_KD 50 // 40
 
 #define ENC_ANGLE_TO_PARROT 18.1 // 17
 #define ENC_CM_TO_PARROT 120 //130
