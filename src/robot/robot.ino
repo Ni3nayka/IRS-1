@@ -120,9 +120,9 @@ void test() {
   runGyro(140);
   digitalWrite(MOSFET_PIN,0);
   Serial.println("end point 1 - 2/2");
-  // delay(1000);
-  // turnGyro(90);
-  // runGyro(30);
+  delay(1000);
+  turnGyro(90);
+  runGyro(25);
   Serial.println("end");
   // turnGyro(90);
   
