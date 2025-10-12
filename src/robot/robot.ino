@@ -13,6 +13,9 @@ void setup() {
   Serial.begin(9600);
   Motors.setup();
   gy25.setup();
+  pinMode(MOSFET_PIN,OUTPUT);
+  digitalWrite(MOSFET_PIN,0);
+  // gy25.calibration();
   Serial2.begin(115200); // ПОТОМУ ЧТО ТУПАЯ АРДУИНА 
   for (uint8_t i = 0; i < servoCount; i++) {
     servos[i].attach(servoPins[i]);
@@ -28,6 +31,8 @@ void setup() {
   delay(1000);
   gy25.update();
   test();
+  Motors.runs(0,0,0,0);
+  digitalWrite(MOSFET_PIN,0);
 }
 
 void loop() {
@@ -60,21 +65,25 @@ void test() {
   // runGyro(320); // 320
   // turnGyro(360);
 
-  // runGyro(100);
+  turnGyro(-90);
+  digitalWrite(MOSFET_PIN,1);
+  delay(500);
+  runGyro(200);
+  digitalWrite(MOSFET_PIN,0);
   // delay(1000);
   // turnGyro(180);
   // delay(1000);
-  // runGyro(100);
+  // runGyro(200);
   // delay(1000);
   // turnGyro(-180);
   // delay(1000);
 
-  for (int i = 0; i<16; i++) {
-    runGyro(100);
-    delay(1000);
-    turnGyro(90);
-    delay(1000);
-  }
+  // for (int i = 0; i<16; i++) {
+  //   runGyro(100);
+  //   delay(1000);
+  //   turnGyro(90);
+  //   delay(1000);
+  // }
 
   // smoothMoveServo(0,180);
   // Motors.run(3, 100);
