@@ -17,7 +17,7 @@ void setup() {
   digitalWrite(MOSFET_PIN,0);
   // gy25.calibration();
   Serial2.begin(115200); // ПОТОМУ ЧТО ТУПАЯ АРДУИНА 
-  Serial1.begin(9600);
+  // Serial1.begin(9600);
   for (uint8_t i = 0; i < servoCount; i++) {
     servos[i].attach(servoPins[i]);
     servos[i].write(90);
