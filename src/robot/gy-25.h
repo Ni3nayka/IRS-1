@@ -17,6 +17,14 @@
 #define GY25_SERIAL_BOD 115200
 #endif
 
+#ifndef GY25_STRAFE_DT
+#define GY25_STRAFE_DT 0 // 1500 // 2100
+#endif
+
+#ifndef GY25_STRAFE_ANDLE
+#define GY25_STRAFE_ANDLE -1 // подруливать в: 1 - вправо, -1 - влево
+#endif
+
 #ifndef GY25_SERIAL
   #if (defined(__AVR__))
   #include <SoftwareSerial.h>
@@ -46,6 +54,8 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
       GY25::horizontal_angle = 0;
       GY25::ggg_cache = 0;
       GY25::ggg_old = 0;
+      GY25::strafe = 0; 
+      GY25::strafe_timer = 0;
     }
 
     void calibration() {
@@ -107,6 +117,25 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
       Serial.print(GY25::horizontal_angle);
       Serial.println();
     }
+
+    // очередной костыль, который появился в рамках подготовки к кубку РТК высшая лига, IRS-1
+    long int getHorizonlalAngle() {
+      GY25::update();
+	    if (GY25::strafe_timer<millis()) {
+        GY25::strafe += GY25_STRAFE_ANDLE;
+        GY25::strafe_timer = millis() + GY25_STRAFE_DT;
+      }
+	    return GY25::horizontal_angle+GY25::strafe;
+    }
+    void delayUpdate(long int t) {
+      for (t += millis(); t>millis();) {
+        GY25::getHorizonlalAngle();
+      }
+    }
+    void setupStrafe() {
+      // возможно эта фича вообще нафиг не нужна, но вроде что-то такое было
+      GY25::strafe_timer = millis() + GY25_STRAFE_DT;
+    }
   private:
     #ifndef GY25_SERIAL
     using SoftwareSerial::SoftwareSerial;
@@ -115,6 +144,7 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
     unsigned char sign = 0;
     unsigned char Re_buf[8];
     long int ggg_cache,ggg_old;
+    long int strafe, strafe_timer;
 
     #ifdef GY25_SERIAL
     void begin(int bod) {

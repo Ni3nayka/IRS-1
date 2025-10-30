@@ -2,38 +2,6 @@
 #pragma once
 #include "BTS7960_PRO.h"
 #include <Servo.h>
-// #include "gy-25.h"
-
-#define MOSFET_PIN 8
-
-// BTS7960_PRO Motors;
-
-// extern BTS7960_PRO Motors;
-// extern Servo servos[];
-// extern int currentPositions[];
-// extern GY25 gy25;
-// extern const uint8_t servoCount;
-
-// #define ENC_POROG 50
-// #define ENC_TIME 500
-// #define ENC_GYRO_TURN_POROG 3
-// #define ENC_FORWARD_KP 0.5
-// #define ENC_FORWARD_KD 10
-// #define ENC_FORWARD_ALIGNMENT_KP 20
-// #define ENC_TURN_KP 5.0
-// #define ENC_TURN_KD 4
-// #define ENC_GYRO_FORWARD_KP 15
-// #define GYRO_TURN_KP 5
-// #define GYRO_TURN_KD 40
-// #define ENC_ANGLE_TO_PARROT 17
-// #define ENC_CM_TO_PARROT 130
-// #define ENC_MOTOR_MAX_SPEED 70
-// #define ENC_MOTOR_MAX_SPEED_TURN 45
-// #define ENC_MOTOR_R_BOOST 1.07
-
-// extern volatile long enc1_count;
-// extern volatile long enc2_count;
-
 
 // Массив пинов сервоприводов
 #define SERVO_QUANTITY 2
@@ -42,32 +10,27 @@ const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 Servo servos[SERVO_QUANTITY];
 int currentPositions[SERVO_QUANTITY] = {90, 90};
 
+#define GY25_STRAFE_DT 1500
+#define GY25_SERIAL Serial2
+#include "gy-25.h"
+GY25 gy25; // (12, 8); (указываем RX и TX пины)
+unsigned long int gy25_lastPrintTime = 0;
 
 // Подключаем файл с энкодерами
 #include "encoders.h"
-#define GY25_SERIAL Serial2
-#include "gy-25.h" // Подключаем библиотеку гироскопа
-// Экземпляр гироскопа (указываем RX и TX пины)
-GY25 gy25; // (12, 8);
-unsigned long int gy25_lastPrintTime = 0;
-
 #define ENC_POROG 50
 #define ENC_TIME 500
 #define ENC_GYRO_TURN_POROG 3
-
 #define ENC_FORWARD_KP 0.5
 #define ENC_FORWARD_KD 10
 #define ENC_FORWARD_ALIGNMENT_KP 20 // выравнивание колес друг относительно друга 
 #define ENC_TURN_KP 5.0
 #define ENC_TURN_KD 4
 #define ENC_GYRO_FORWARD_KP 3
-
 #define GYRO_TURN_KP 7 // 8
 #define GYRO_TURN_KD 50 // 40
-
 #define ENC_ANGLE_TO_PARROT 18.1 // 17
 #define ENC_CM_TO_PARROT 120 //130
-
 #define ENC_MOTOR_MAX_SPEED 70 // 70
 #define ENC_MOTOR_MAX_SPEED_TURN 70
 #define ENC_MOTOR_R_BOOST 1 //1.07 // ОН ОТВЕЧАЕТ ЗА ЛЕВЫЙ МОТОР!!!
@@ -75,39 +38,38 @@ unsigned long int gy25_lastPrintTime = 0;
 // Объявление объекта управления моторами
 BTS7960_PRO Motors;
 
-
-void runGyro(long int forward = 0);
-void turnGyro(long int right = 0);
-void smoothMoveServo(int servoNum, int targetAngle, int speed = 35);
-
-long int enc_strafe = 0;
-unsigned long int enc_strafe_timer = 0;
-#define GYRO_STRAFE_DT 1500 // 2100
-#define GYRO_STRAFE_ANDLE -1 // подруливать в: 1 - вправо, -1 - влево
-
-void updateGyroStrafe() {
-	if (enc_strafe_timer<millis()) {
-		enc_strafe += GYRO_STRAFE_ANDLE;
-		enc_strafe_timer = millis() + GYRO_STRAFE_DT;
+void setupRobot() {
+	Serial.begin(9600);
+	Motors.setup();
+	gy25.setup();
+	// gy25.calibration();
+	Serial2.begin(115200); // ПОТОМУ ЧТО ТУПАЯ АРДУИНА 
+	for (uint8_t i = 0; i < servoCount; i++) {
+		servos[i].attach(servoPins[i]);
+		servos[i].write(90);
+		gy25.update();
 	}
-}
-
-long int getGyroStrafe() {
+	setupEncoders();
+	Serial.println("Система готова. Форматы команд:");
+	Serial.println("Моторы: m 1_скорость 2_скорость");
+	Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
+	Serial.println("Энкодеры: e 0 0 - обнулить 1 1 - запросить");
+	Serial.println("Движение по энкодерам: E 0 0 - forward right");
+	delay(1000);
 	gy25.update();
-	updateGyroStrafe();
-	return gy25.horizontal_angle+enc_strafe;
 }
 
 // Реализация функций
-void runGyro(long int forward) {
+void runGyro(long int forward=0) {
 	long int enc_target = enc1_count + forward * ENC_CM_TO_PARROT;
 	long int e_old = 0;
-	long int gyro_target = getGyroStrafe(); //  + 5
+	long int gyro_target = gy25.getHorizonlalAngle(); //  + 5
 	Motors.run(1, 100);
 	Motors.run(2, 100);
 	delay(400);
 	long int time = millis() + ENC_TIME;
-	enc_strafe_timer = millis() + GYRO_STRAFE_DT;
+	//enc_strafe_timer = millis() + GYRO_STRAFE_DT;
+	gy25.setupStrafe();
 	while (time > millis()) {
 		// gy25.update();
 		if ((abs(enc1_count - enc_target) > ENC_POROG)) {
@@ -124,7 +86,7 @@ void runGyro(long int forward) {
 			p *= ENC_TURN_KP;
 			d *= ENC_TURN_KD;
 		}
-		long int e_gyro = getGyroStrafe() - gyro_target;
+		long int e_gyro = gy25.getHorizonlalAngle() - gyro_target;
 		long int p_gyro = e_gyro * ENC_GYRO_FORWARD_KP;
 		long int m1 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
 		long int m2 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
@@ -137,17 +99,18 @@ void runGyro(long int forward) {
 	Motors.run(2, 0);
 }
 
-void turnGyro(long int right) {
+void turnGyro(long int right=0) {
 	long int time = millis() + ENC_TIME;
 	long int e_old = 0;
-	long int gyro_target = getGyroStrafe() - right; //  + 5
-	enc_strafe_timer = millis() + GYRO_STRAFE_DT;
+	long int gyro_target = gy25.getHorizonlalAngle() - right; //  + 5
+	//enc_strafe_timer = millis() + GYRO_STRAFE_DT;
+	gy25.setupStrafe();
 	while (time > millis()) {
 		// gy25.update();
-		if ((abs(getGyroStrafe() - gyro_target) > ENC_GYRO_TURN_POROG)) {
+		if ((abs(gy25.getHorizonlalAngle() - gyro_target) > ENC_GYRO_TURN_POROG)) {
 			time = millis() + ENC_TIME;
 		}
-		long int e = getGyroStrafe() - gyro_target;
+		long int e = gy25.getHorizonlalAngle() - gyro_target;
 		long int p = e;
 		long int d = e - e_old;
 		e_old = e;
@@ -162,7 +125,7 @@ void turnGyro(long int right) {
 	Motors.run(2, 0);
 }
 
-void smoothMoveServo(int servoNum, int targetAngle, int speed) {
+void smoothMoveServo(int servoNum, int targetAngle, int speed=35) {
 	if (servoNum < 0 || servoNum >= SERVO_QUANTITY) {
 		return;
 	}
@@ -184,4 +147,15 @@ void smoothMoveServo(int servoNum, int targetAngle, int speed) {
 			gy25.update();
 		}
 	}
+}
+
+void brushesOn() {
+  gy25.delayUpdate(1000);
+  Motors.run(4, 100);
+  gy25.delayUpdate(1000);
+}
+void brushesOff() {
+  gy25.delayUpdate(1000);
+  Motors.run(4, 0);
+  gy25.delayUpdate(1000);
 }
