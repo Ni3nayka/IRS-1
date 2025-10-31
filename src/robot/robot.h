@@ -63,7 +63,8 @@ void setupRobot() {
 void runGyro(long int forward=0) {
 	long int enc_target = enc1_count + forward * ENC_CM_TO_PARROT;
 	long int e_old = 0;
-	long int gyro_target = gy25.getHorizonlalAngle(); //  + 5
+	gy25.update();
+	long int gyro_target = gy25.horizontal_angle_strafe; //  + 5
 	Motors.run(1, 100);
 	Motors.run(2, 100);
 	delay(400);
@@ -71,7 +72,7 @@ void runGyro(long int forward=0) {
 	//enc_strafe_timer = millis() + GYRO_STRAFE_DT;
 	gy25.setupStrafe();
 	while (time > millis()) {
-		// gy25.update();
+		gy25.update();
 		if ((abs(enc1_count - enc_target) > ENC_POROG)) {
 			time = millis() + ENC_TIME;
 		}
@@ -86,7 +87,7 @@ void runGyro(long int forward=0) {
 			p *= ENC_TURN_KP;
 			d *= ENC_TURN_KD;
 		}
-		long int e_gyro = gy25.getHorizonlalAngle() - gyro_target;
+		long int e_gyro = gy25.horizontal_angle_strafe - gyro_target;
 		long int p_gyro = e_gyro * ENC_GYRO_FORWARD_KP;
 		long int m1 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
 		long int m2 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
@@ -102,15 +103,16 @@ void runGyro(long int forward=0) {
 void turnGyro(long int right=0) {
 	long int time = millis() + ENC_TIME;
 	long int e_old = 0;
-	long int gyro_target = gy25.getHorizonlalAngle() - right; //  + 5
+	gy25.update();
+	long int gyro_target = gy25.horizontal_angle_strafe - right; //  + 5
 	//enc_strafe_timer = millis() + GYRO_STRAFE_DT;
 	gy25.setupStrafe();
 	while (time > millis()) {
-		// gy25.update();
-		if ((abs(gy25.getHorizonlalAngle() - gyro_target) > ENC_GYRO_TURN_POROG)) {
+		gy25.update();
+		if ((abs(gy25.horizontal_angle_strafe - gyro_target) > ENC_GYRO_TURN_POROG)) {
 			time = millis() + ENC_TIME;
 		}
-		long int e = gy25.getHorizonlalAngle() - gyro_target;
+		long int e = gy25.horizontal_angle_strafe - gyro_target;
 		long int p = e;
 		long int d = e - e_old;
 		e_old = e;
@@ -159,3 +161,23 @@ void brushesOff() {
   Motors.run(4, 0);
   gy25.delayUpdate(1000);
 }
+
+// ========================= VOLTAGE ==============================
+
+const int voltage_counter = 2;
+const int voltage_pins[voltage_counter] = {A0, A1};
+
+float getVoltage(int number) {
+	if (number>voltage_counter || number<1) return 0.0;
+	return analogRead(voltage_pins[number])*0.029325513;
+	// int a = 0;
+	// const int iteritions = 3;
+	// for (int i = 0; i<iteritions; i++) {
+	// 	a += analogRead(voltage_pins[number]);
+	// 	delay(100);
+	// }
+	// return float(a)/iteritions*0.029325513;
+	
+}
+
+

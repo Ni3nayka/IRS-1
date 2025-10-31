@@ -45,6 +45,7 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
   public:
     int angle[3];
     long int horizontal_angle;
+    long int horizontal_angle_strafe;
 
     void setup() {
       GY25::begin(GY25_SERIAL_BOD);
@@ -52,6 +53,7 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
       GY25::write(0XA5);  // request the data
       GY25::write(0X52);
       GY25::horizontal_angle = 0;
+      GY25::horizontal_angle_strafe = 0;
       GY25::ggg_cache = 0;
       GY25::ggg_old = 0;
       GY25::strafe = 0; 
@@ -73,6 +75,7 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
     }
 
     void update() {
+      // get data
       while (GY25::available()) {
         GY25::Re_buf[GY25::counter] = (unsigned char)GY25::read();
         if (GY25::counter == 0 && GY25::Re_buf[0] != 0xAA) return;
@@ -105,6 +108,12 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
           GY25::horizontal_angle = a + GY25::ggg_cache;
         }
       }
+      // strafe (очередной костыль, который появился в рамках подготовки к кубку РТК высшая лига, IRS-1)
+	    if (GY25::strafe_timer<millis()) {
+        GY25::strafe += GY25_STRAFE_ANDLE;
+        GY25::strafe_timer = millis() + GY25_STRAFE_DT;
+      }
+      GY25::horizontal_angle_strafe = GY25::horizontal_angle+GY25::strafe;
     }
 
     void print() {
@@ -115,21 +124,15 @@ class GY25: private SoftwareSerial {  //(): public SoftwareSerial {
       Serial.print(GY25::angle[2]);
       Serial.print(" ");
       Serial.print(GY25::horizontal_angle);
+      Serial.print(" ");
+      Serial.print(GY25::horizontal_angle_strafe);
       Serial.println();
     }
 
     // очередной костыль, который появился в рамках подготовки к кубку РТК высшая лига, IRS-1
-    long int getHorizonlalAngle() {
-      GY25::update();
-	    if (GY25::strafe_timer<millis()) {
-        GY25::strafe += GY25_STRAFE_ANDLE;
-        GY25::strafe_timer = millis() + GY25_STRAFE_DT;
-      }
-	    return GY25::horizontal_angle+GY25::strafe;
-    }
     void delayUpdate(long int t) {
       for (t += millis(); t>millis();) {
-        GY25::getHorizonlalAngle();
+        GY25::update();
       }
     }
     void setupStrafe() {

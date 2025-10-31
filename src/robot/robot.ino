@@ -9,6 +9,13 @@
  
 #include "robot.h"
 
+struct SerialData {
+  char mode;
+  int data_1;
+  int data_2;
+  int data_counter;
+};
+
 void setup() {
   setupRobot();
 	//test();
@@ -17,7 +24,6 @@ void setup() {
 
 void loop() {
   gy25.update();
-  // Motors.runs(30, 30);
   // serialDebugEncAndGyro();
   serialDataParser();
 }
@@ -72,20 +78,6 @@ void test() {
   
 }
 
-void serialDebugEncAndGyro() { 
-  // Выводим данные раз в 100 мс, не мешая вводу
-  if (millis() - gy25_lastPrintTime >= 100) {
-    gy25_lastPrintTime = millis();
-    Serial.print("GY25 horizontal_angle: ");
-    Serial.print(gy25.horizontal_angle);
-    Serial.print("  ENC1: ");
-    Serial.print(enc1_count);
-    Serial.print("  ENC2: ");
-    Serial.print(enc2_count);
-    // testEnc();
-    Serial.println();
-  }
-}
 
 void wallBack() { // выравнивание по стенке
   Motors.run(1, 0);
@@ -105,7 +97,125 @@ void wallBack() { // выравнивание по стенке
   // gy25.delayUpdate(1000); 
 }
 
+// ================== SERIAL ===============================================
+
+void serialDebugEncAndGyro() { 
+  // Выводим данные раз в 100 мс, не мешая вводу
+  if (millis() - gy25_lastPrintTime >= 100) {
+    gy25_lastPrintTime = millis();
+    Serial.print("GY25 horizontal_angle: ");
+    Serial.print(gy25.horizontal_angle);
+    Serial.print("  ENC1: ");
+    Serial.print(enc1_count);
+    Serial.print("  ENC2: ");
+    Serial.print(enc2_count);
+    // testEnc();
+    Serial.println();
+  }
+}
+
+// Функция для опроса монитора порта и парсинга данных
+SerialData readSerialData() {
+  SerialData result;
+  result.mode = '\0'; // Инициализация пустым значением
+  result.data_1 = 0;
+  result.data_2 = 0;
+  result.data_counter = 0;
+  
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim(); // Удаляем лишние пробелы
+    
+    if (input.length() > 0) {
+      // Разбиваем строку на части
+      int firstSpace = input.indexOf(' ');
+      int secondSpace = input.indexOf(' ', firstSpace + 1);
+      
+      // Парсим букву (первый символ)
+      if (input.length() >= 1) {
+        result.mode = input.charAt(0);
+      }
+      
+      // Парсим первое число
+      if (firstSpace != -1) {
+        String num1Str;
+        if (secondSpace != -1) {
+          num1Str = input.substring(firstSpace + 1, secondSpace);
+        } else {
+          num1Str = input.substring(firstSpace + 1);
+        }
+        num1Str.trim();
+        if (num1Str.length() > 0) {
+          result.data_1 = num1Str.toInt();
+          result.data_counter++;
+        }
+      }
+      
+      // Парсим второе число
+      if (secondSpace != -1) {
+        String num2Str = input.substring(secondSpace + 1);
+        num2Str.trim();
+        if (num2Str.length() > 0) {
+          result.data_2 = num2Str.toInt();
+          result.data_counter++;
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
+void sendDataToSerial() {
+  Serial.println();
+  Serial.print("GY25: ");
+  Serial.print(gy25.angle[0]);
+  Serial.print(" ");
+  Serial.print(gy25.angle[1]);
+  Serial.print(" ");
+  Serial.print(gy25.angle[2]);
+  Serial.print(" ");
+  // Serial.print(gy25.horizontal_angle);
+  Serial.print(gy25.horizontal_angle_strafe);
+  Serial.println();
+  Serial.print("ENC1: ");
+  Serial.println(enc1_count);
+  Serial.print("ENC2: ");
+  Serial.println(enc2_count);
+  Serial.print("VOLTAGE1: ");
+  Serial.println(getVoltage(1));
+  Serial.print("VOLTAGE2: ");
+  Serial.println(getVoltage(2));
+}
+
 void serialDataParser() {
+  // Вызываем функцию достаточно часто
+  SerialData data = readSerialData();
+  
+  // Если получены данные, обрабатываем их
+  if (data.mode != '\0') {
+    // Serial.print("Режим: ");
+    // Serial.println(data.mode);
+    // Serial.print("Данные 1: ");
+    // Serial.println(data.data_1);
+    // Serial.print("Данные 2: ");
+    // Serial.println(data.data_2);
+    // Serial.print("Количество чисел: ");
+    // Serial.println(data.data_counter);
+    // Serial.println("---");
+    if      (data.mode=='m' && data.data_counter==2) Motors.run(data.data_1, data.data_2);
+    else if (data.mode=='M' && data.data_counter==2) Motors.runs(data.data_1, data.data_2);
+    else if (data.mode=='F' && data.data_counter==1) runGyro(data.data_1);
+    else if (data.mode=='R' && data.data_counter==1) turnGyro(data.data_1);
+    else if (data.mode=='L' && data.data_counter==1) turnGyro(-data.data_1);
+    else if (data.mode=='g' && data.data_counter==0) sendDataToSerial();
+    else Serial.println("ERROR: unknow command");
+  }
+  
+  //delay(100); // Небольшая задержка между опросами
+}
+
+void serialDataParser_old() {
   // ввод управяющих данных из монитора порта
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
