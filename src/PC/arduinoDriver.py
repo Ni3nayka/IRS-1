@@ -99,27 +99,37 @@ class ArduinoDriver(arduino_usb):
         print(cmd)
         self.write(cmd)
 
+    def runMotor2(self, left, right):
+        left = max(-100, min(100, int(left)))
+        right = max(-100, min(100, int(right)))
+        cmd = f"M {left} {right}"
+        print(cmd)
+        self.write(cmd)
+
     def RunServo(self, number, angle):
         # Управление сервоприводом. number — номер серво, angle — угол (0..180)
         angle = max(0, min(180, int(angle)))
         cmd = f"s {number} {angle}"
         self.write(cmd)
 
-    def RunEnc(self, forward, right):
+    def RunForward(self, forward):
         # движемся по энкодерам (читай мануал в коде ардуино)
         self.flush()
-        cmd = f"E {forward} {right}"
+        cmd = f"F {forward}"
         self.write(cmd)
 
-    def RunForward(self, forward):
+    def TurnLeft(self, left):
         self.flush()
-        cmd = f"E {forward} 0"
+        cmd = f"L {left}"
         self.write(cmd)
 
     def TurnRight(self, right):
         self.flush()
-        cmd = f"E 0 {right}"
+        cmd = f"R {right}"
         self.write(cmd)
+
+    def getRobotData():
+        pass
 
     def CheckEnc(self):
         msg = self.ser.readline().decode("utf-8")
@@ -145,15 +155,25 @@ if __name__ == "__main__":
     #         print(arduino.read())
 
     # Test 2
-    arduino = ArduinoDriver('/dev/ttyUSB1')
+    arduino = ArduinoDriver('/dev/ttyUSB0')
     sleep(5)
-    arduino.RunForward("E 0 0")
+    arduino.runMotor(1,10)
+    sleep(1)
+    arduino.runMotor(1,0)
+    sleep(5)
+    arduino.runMotor2(20,20)
+    sleep(3)
+    arduino.runMotor(0,0)
+    sleep(3)
+    arduino.RunForward(30)
+    sleep(10)
+    arduino.TurnLeft(90)
+    sleep(10)
+    arduino.TurnRight(90)
+    sleep(10)
     print("Wait")
     while 1:
         print(arduino.ser.readline().decode("utf-8"))
     
 
     arduino.enable = False
-    
-else:
-    pass
