@@ -10,6 +10,8 @@ ctrl+(shift)+`
 sudo chmod 666 /dev/ttyACM0
 sudo chmod 666 /dev/ttyUSB0
 ls /dev | grep USB
+
+ffplay /dev/video2
 '''
 
 from arduinoDriver import ArduinoDriver
