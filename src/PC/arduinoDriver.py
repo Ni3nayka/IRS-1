@@ -109,24 +109,29 @@ class ArduinoDriver(arduino_usb):
         cmd = f"s {number} {angle}"
         self.write(cmd)
 
-    def RunForward(self, forward):
+    def RunForward(self, forward, wait_end=False):
         self.buffer.clear()
         self.waiting_for_a_response = True
         cmd = f"F {forward}"
         self.write(cmd)
+        if wait_end: 
+            while(not self.LastCommandIsEnd()): pass
 
-
-    def TurnLeft(self, left):
+    def TurnLeft(self, left, wait_end=False):
         self.buffer.clear()
         self.waiting_for_a_response = True
         cmd = f"L {left}"
         self.write(cmd)
+        if wait_end: 
+            while(not self.LastCommandIsEnd()): pass
 
-    def TurnRight(self, right):
+    def TurnRight(self, right, wait_end=False):
         self.buffer.clear()
         self.waiting_for_a_response = True
         cmd = f"R {right}"
         self.write(cmd)
+        if wait_end: 
+            while(not self.LastCommandIsEnd()): pass
 
     def getRobotData(self):
         '''
