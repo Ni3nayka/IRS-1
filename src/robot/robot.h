@@ -1,5 +1,6 @@
 // Файл для функций движения робота
 #pragma once
+
 #include "BTS7960_PRO.h"
 #include <Servo.h>
 
@@ -34,9 +35,56 @@ unsigned long int gy25_lastPrintTime = 0;
 #define ENC_MOTOR_MAX_SPEED 70 // 70
 #define ENC_MOTOR_MAX_SPEED_TURN 70
 #define ENC_MOTOR_R_BOOST 1 //1.07 // ОН ОТВЕЧАЕТ ЗА ЛЕВЫЙ МОТОР!!!
+// #define ENC_UPDATE_DELAY_FOR_CHECK_ERROR 1000
+// #define ENC_UPDATE_DELTA_FOR_CHECK_ERROR 100
 
 // Объявление объекта управления моторами
 BTS7960_PRO Motors;
+
+// ========================= VOLTAGE ==============================
+
+const int voltage_counter = 2;
+const int voltage_pins[voltage_counter] = {A0, A1};
+
+float getVoltage(int number) {
+	if (number>voltage_counter || number<1) return 0.0;
+	return analogRead(voltage_pins[number])*0.029325513;
+	// int a = 0;
+	// const int iteritions = 3;
+	// for (int i = 0; i<iteritions; i++) {
+	// 	a += analogRead(voltage_pins[number]);
+	// 	delay(100);
+	// }
+	// return float(a)/iteritions*0.029325513;
+	
+}
+
+// ========================= SERIAL ==============================
+
+#include "serialParser.h"
+void sendDataToSerial() {
+  Serial.println();
+  Serial.print("GY25: ");
+  Serial.print(gy25.angle[0]);
+  Serial.print(" ");
+  Serial.print(gy25.angle[1]);
+  Serial.print(" ");
+  Serial.print(gy25.angle[2]);
+  Serial.print(" ");
+  // Serial.print(gy25.horizontal_angle);
+  Serial.print(gy25.horizontal_angle_strafe);
+  Serial.println();
+  Serial.print("ENC1: ");
+  Serial.println(enc1_count);
+  Serial.print("ENC2: ");
+  Serial.println(enc2_count);
+  Serial.print("VOLTAGE1: ");
+  Serial.println(getVoltage(1));
+  Serial.print("VOLTAGE2: ");
+  Serial.println(getVoltage(2));
+}
+
+// ========================= CODE ==============================
 
 void setupRobot() {
 	Serial.begin(9600);
@@ -50,13 +98,9 @@ void setupRobot() {
 		gy25.update();
 	}
 	setupEncoders();
-	Serial.println("Система готова. Форматы команд:");
-	Serial.println("Моторы: m 1_скорость 2_скорость");
-	Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
-	Serial.println("Энкодеры: e 0 0 - обнулить 1 1 - запросить");
-	Serial.println("Движение по энкодерам: E 0 0 - forward right");
 	delay(1000);
 	gy25.update();
+	Serial.println("System ready!");
 }
 
 // Реализация функций
@@ -70,8 +114,29 @@ void runGyro(long int forward=0) {
 	delay(400);
 	long int time = millis() + ENC_TIME;
 	//enc_strafe_timer = millis() + GYRO_STRAFE_DT;
+	int serial_e_for_gyro = 0;
 	gy25.setupStrafe();
+	// long int enc_1_old = enc1_count, enc_2_old = enc2_count, enc_update_timer = millis() + ENC_UPDATE_DELAY_FOR_CHECK_ERROR;
 	while (time > millis()) {
+		// serial
+		SerialData data = readSerialData();
+  	if (data.mode != '\0') {
+			if      (data.mode=='S' && data.data_counter==0) break;
+			else if (data.mode=='e' && data.data_counter==1) serial_e_for_gyro = data.data_1;
+			else if (data.mode=='g' && data.data_counter==0) sendDataToSerial();
+			else Serial.println("ERROR: unknow command");
+		}
+		// check error (робот мощный и тупо буксует)
+		// if (enc_update_timer<millis()) {
+		// 	if (abs(enc_1_old-enc1_count)<ENC_UPDATE_DELTA_FOR_CHECK_ERROR || abs(enc_2_old-enc2_count)<ENC_UPDATE_DELTA_FOR_CHECK_ERROR) {
+		// 		Motors.run(1, 0);
+		// 		Motors.run(2, 0);
+		// 		Serial.println("ERROR: forward - enc stop");
+		// 		return;
+		// 	}
+		// 	enc_update_timer = millis() + ENC_UPDATE_DELAY_FOR_CHECK_ERROR;
+		// }
+		// move
 		gy25.update();
 		if ((abs(enc1_count - enc_target) > ENC_POROG)) {
 			time = millis() + ENC_TIME;
@@ -87,7 +152,7 @@ void runGyro(long int forward=0) {
 			p *= ENC_TURN_KP;
 			d *= ENC_TURN_KD;
 		}
-		long int e_gyro = gy25.horizontal_angle_strafe - gyro_target;
+		long int e_gyro = gy25.horizontal_angle_strafe - gyro_target + serial_e_for_gyro;
 		long int p_gyro = e_gyro * ENC_GYRO_FORWARD_KP;
 		long int m1 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
 		long int m2 = constrain(p + d, -ENC_MOTOR_MAX_SPEED, ENC_MOTOR_MAX_SPEED);
@@ -98,6 +163,7 @@ void runGyro(long int forward=0) {
 	}
 	Motors.run(1, 0);
 	Motors.run(2, 0);
+	Serial.println("END COMMAND: forward - success");
 }
 
 void turnGyro(long int right=0) {
@@ -125,6 +191,7 @@ void turnGyro(long int right=0) {
 	}
 	Motors.run(1, 0);
 	Motors.run(2, 0);
+	Serial.println("END COMMAND: turn - success");
 }
 
 void smoothMoveServo(int servoNum, int targetAngle, int speed=35) {
@@ -160,24 +227,6 @@ void brushesOff() {
   gy25.delayUpdate(1000);
   Motors.run(4, 0);
   gy25.delayUpdate(1000);
-}
-
-// ========================= VOLTAGE ==============================
-
-const int voltage_counter = 2;
-const int voltage_pins[voltage_counter] = {A0, A1};
-
-float getVoltage(int number) {
-	if (number>voltage_counter || number<1) return 0.0;
-	return analogRead(voltage_pins[number])*0.029325513;
-	// int a = 0;
-	// const int iteritions = 3;
-	// for (int i = 0; i<iteritions; i++) {
-	// 	a += analogRead(voltage_pins[number]);
-	// 	delay(100);
-	// }
-	// return float(a)/iteritions*0.029325513;
-	
 }
 
 
