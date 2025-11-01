@@ -74,13 +74,13 @@ void sendDataToSerial() {
   // Serial.print(gy25.horizontal_angle);
   Serial.print(gy25.horizontal_angle_strafe);
   Serial.println();
-  Serial.print("ENC1: ");
-  Serial.println(enc1_count);
-  Serial.print("ENC2: ");
+  Serial.print("ENC: ");
+  Serial.print(enc1_count);
+  Serial.print(" ");
   Serial.println(enc2_count);
-  Serial.print("VOLTAGE1: ");
-  Serial.println(getVoltage(1));
-  Serial.print("VOLTAGE2: ");
+  Serial.print("VOLTAGE: ");
+  Serial.print(getVoltage(1));
+  Serial.print(" ");
   Serial.println(getVoltage(2));
 }
 
