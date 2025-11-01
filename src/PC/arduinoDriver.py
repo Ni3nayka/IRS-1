@@ -13,130 +13,159 @@ https://python-scripts.com/threading
 pip install pyserial
 
 code writing with copilot
+
+code have big update for robofinist 2025 - kubok RTC - vishaya liga 
 '''
 
 import serial
-from threading import Thread
+from time import sleep
 
-class arduino_usb(Thread):
+class arduino_usb:
     def __init__(self, com):
-        super().__init__()
-        self.ser = None
-        self.mas = []
+        self.serial_device = None
+        self.buffer = []
         self.enable = True
         try:
-            self.ser = serial.Serial(com, 9600)
+            self.serial_device = serial.Serial(com, 9600)
+            sleep(5) # чтобы ардуинка успела загрузиться
         except serial.serialutil.SerialException:
             self.enable = False
             print(f"ERROR <python_arduino_USB_plus>: no USB device: {com}")
-
-    def port(self):
-        return self.enable
-
-    @staticmethod
-    def _clean_serial_data(S):
-        # Удаляет первые 2 и последние 5 символов
-        S = str(S)
-        if len(S) > 7:
-            # return S[2:-5]
-            return S
-        return ''
-
-    def now_read(self):
-        if not self.enable:
-            return 0
-        S = self.ser.readline()
-        return self._clean_serial_data(S)
-
-    def flush(self):
-        self.ser.reset_input_buffer()
-        self.ser.read_all()
 
     def write(self, S, ignore_enable=0):
         if not self.enable and not ignore_enable:
             return 0
         S = str(S) + '\n'
-        self.ser.write(S.encode('utf-8'))
+        self.serial_device.write(S.encode('utf-8'))
 
-    def run(self):
-        while self.enable:
-            S = self.ser.readline()
-            cleaned = self._clean_serial_data(S)
-            self.mas.append(cleaned)
-            print(cleaned)
-        return 0
+    def _updateForRead(self):
+        sleep(0.1)
+        data = self.serial_device.read_all()
+        # print(data)
+        if not data: return
+        # декодируем в строку (безопасно, заменяем нечитаемые байты)
+        s = data.decode('utf-8', errors='replace')
+        # получаем список строк без пустых элементов
+        lines = [line for line in s.strip().splitlines() if line]
+        # print("raw string:", s)   # вся строка с \r\n
+        # print("lines:", lines)
+        self.buffer += lines
+        # print(self.buffer)
 
     def available(self):
         if not self.enable:
             return 0
-        return int(bool(self.mas))
+        self._updateForRead()
+        return len(self.buffer)
 
     def read(self):
-        if not self.enable or len(self.mas) == 0:
-            return 0
-        return self.mas.pop(0)
+        if self.available() == 0:
+            return ""
+        # Удаляем пустые списки в начале буфера (на всякий случай)
+        while self.buffer and not self.buffer[0]:
+            self.buffer.pop(0)
+        if not self.buffer:
+            return ""
+        # Берём первый элемент из первого списка и удаляем его
+        elem = self.buffer.pop(0)
+        return elem
 
     def wait_read(self):
         if not self.enable:
             return 0
-        while not self.mas:
-            pass
-        return self.mas.pop(0)
+        while self.available() == 0: pass
+        return self.read()
 
 class ArduinoDriver(arduino_usb):
-    # def runMotor(self, left_speed, right_speed):
-    #     # Управление моторами. left_speed и right_speed — значения скоростей (например, -100..100)
-    #     left_speed = max(-100, min(100, int(left_speed)))
-    #     right_speed = max(-100, min(100, int(right_speed)))
-    #     cmd = f"m {left_speed} {right_speed}"
-    #     print(cmd)
-    #     self.write(cmd)
+
+    def __init__(self, com):
+        super().__init__(com)
+        self.waiting_for_a_response = False
+        self.gy25 = [0,0,0,0]
+        self.enc = [0,0]
+        self.voltage = [0,0]
+
+    def _constrain(self, value, min_value, max_value):
+        return max(min_value, min(max_value, int(value)))
+
     def runMotor(self, number, speed):
         # Управление моторами. left_speed и right_speed — значения скоростей (например, -100..100)
-        speed = max(-100, min(100, int(speed)))
-        number = max(1, min(4, int(number)))
+        speed = self._constrain(speed, -100, 100)
+        number = self._constrain(number, 1, 4)
         cmd = f"m {number} {speed}"
-        print(cmd)
+        # print(cmd)
         self.write(cmd)
 
     def runMotor2(self, left, right):
-        left = max(-100, min(100, int(left)))
-        right = max(-100, min(100, int(right)))
+        left = self._constrain(left, -100, 100)
+        right = self._constrain(right, -100, 100)
         cmd = f"M {left} {right}"
-        print(cmd)
+        # print(cmd)
         self.write(cmd)
 
     def RunServo(self, number, angle):
         # Управление сервоприводом. number — номер серво, angle — угол (0..180)
-        angle = max(0, min(180, int(angle)))
+        angle = self._constrain(angle, 0, 180)
         cmd = f"s {number} {angle}"
         self.write(cmd)
 
     def RunForward(self, forward):
-        # движемся по энкодерам (читай мануал в коде ардуино)
-        self.flush()
+        self.buffer.clear()
+        self.waiting_for_a_response = True
         cmd = f"F {forward}"
         self.write(cmd)
 
+
     def TurnLeft(self, left):
-        self.flush()
+        self.buffer.clear()
+        self.waiting_for_a_response = True
         cmd = f"L {left}"
         self.write(cmd)
 
     def TurnRight(self, right):
-        self.flush()
+        self.buffer.clear()
+        self.waiting_for_a_response = True
         cmd = f"R {right}"
         self.write(cmd)
 
-    def getRobotData():
-        pass
+    def getRobotData(self):
+        '''
+        gy25 (angle): x y z z_strafe
+        enc: left right
+        voltage: arduino(1), raspberry(2)
+        '''
+        def translater(array,line,line_test,count_parametrs,parameters_is_float):
+            if line.startswith(line_test):
+                parts = line.split()
+                if len(parts) == count_parametrs+1:
+                    try:
+                        if parameters_is_float:
+                            array = [float(num) for num in parts[1:]]
+                        else:
+                            array = [int(num) for num in parts[1:]]
+                    except ValueError:
+                        pass
+            return array
 
-    def CheckEnc(self):
-        msg = self.ser.readline().decode("utf-8")
-        print(msg)
-        return "&" in msg
+        if not self.enable:
+            return 0
+        self.available() # обновляем доступные данные
+        self.buffer.clear()
+        self.write("g")
+        while self.available()<3: pass # print(self.available())
+        # print(self.read())
+        # print(self.read())
+        # print(self.read())
+        self.gy25 = translater(self.gy25,self.read(),"GY25:",4,False)
+        self.enc = translater(self.enc,self.read(),"ENC:",2,False)
+        self.voltage = translater(self.voltage,self.read(),"VOLTAGE:",2,True)
 
-
+    def LastCommandIsEnd(self):
+        if not self.waiting_for_a_response: return True
+        self.available() # обновляем доступные данные
+        found = any("END COMMAND:" in str(line).upper() for line in self.buffer)
+        self.waiting_for_a_response = False if found else True
+        return not self.waiting_for_a_response
 
 if __name__ == "__main__":
     from time import sleep
@@ -156,24 +185,40 @@ if __name__ == "__main__":
 
     # Test 2
     arduino = ArduinoDriver('/dev/ttyUSB0')
-    sleep(5)
-    arduino.runMotor(1,10)
-    sleep(1)
-    arduino.runMotor(1,0)
-    sleep(5)
-    arduino.runMotor2(20,20)
-    sleep(3)
-    arduino.runMotor(0,0)
-    sleep(3)
-    arduino.RunForward(30)
-    sleep(10)
-    arduino.TurnLeft(90)
-    sleep(10)
-    arduino.TurnRight(90)
-    sleep(10)
-    print("Wait")
-    while 1:
-        print(arduino.ser.readline().decode("utf-8"))
-    
+    # arduino.runMotor(1,10)
+    # sleep(1)
+    # arduino.runMotor(1,0)
+    # sleep(5)
+    # arduino.runMotor2(20,20)
+    # sleep(3)
+    # arduino.runMotor(0,0)
+    # sleep(3)
+    # arduino.RunForward(30)
+    # sleep(10)
+    # arduino.TurnLeft(90)
+    # sleep(10)
+    # arduino.TurnRight(90)
+    # sleep(10)
+    # print("Wait")
+    # while 1:
+    #     print(arduino.ser.readline().decode("utf-8"))
+    # arduino.enable = False
 
-    arduino.enable = False
+    # Test 3
+    arduino.getRobotData()
+    print(arduino.gy25)
+    print(arduino.enc)
+    print(arduino.voltage)
+    print()
+    sleep(2)
+    
+    while 1:
+        arduino.RunForward(100)
+        a = False
+        while not a:
+            a = arduino.LastCommandIsEnd()
+            print(a)
+            sleep(0.5)
+        print()
+        sleep(0.5)
+    
