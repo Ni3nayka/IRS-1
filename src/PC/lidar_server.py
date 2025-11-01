@@ -6,7 +6,7 @@ import json
 import time
 
 class LidarServer:
-    def __init__(self, lidar_port, host='localhost', port=9999):
+    def __init__(self, lidar_port, host='0.0.0.0', port=9999):
         self.lidar = RPLidar(lidar_port)
         self.host = host
         self.port = port
