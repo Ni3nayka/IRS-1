@@ -16,28 +16,56 @@ ffplay /dev/video2
 
 from arduinoDriver import ArduinoDriver
 from videoHttpStreamer import VideoHttpStreamer
-from cameraDriver import Camera
+# from cameraDriver import Camera
 from time import sleep
 
-arduino = ArduinoDriver("/dev/ttyUSB1") # "/dev/ttyACM0") # дописать отключение порта arduino.start()
-sleep(5) # Иначе ардуинка не успевает включиться
+arduino = ArduinoDriver("/dev/ttyUSB0") # "/dev/ttyACM0") # дописать отключение порта arduino.start()
+
+from lidar_client import Lidar
+lidar = Lidar()
+
+# while 1:
+#     print(yaw, pose)
+#     time.sleep(1)
+
+# class coordinates:
+#     def __init__(self,x=0,y=0,dir=0,name=None):
+#         self.x = x
+#         self.y = y
+#         self.dir = dir # 0 - в направлении первой трубы
+#         self.name = name
+#     def copy(self,name=None):
+#         return coordinates(self.x,self.y,self.dir,name)
+#     def print(self):
+#         print("coordinates", end='')
+#         if self.name!=None: print(" (" + str(self.name) + ")", end='')
+#         print(": x="+str(self.x)+" y="+str(self.y)+" dir="+str(self.dir))
+# real_coo = coordinates(40,40,90,"real")
+# target_coo = real_coo.copy("target")
+# real_coo.print()
+# target_coo.print()
+
+def error():
+    pass
 
 def main():
+    arduino.getRobotData()
+    print("battery (raspberry):", arduino.voltage[1])
+    print("battery (arduino):", arduino.voltage[0])
 
-    # arduino.runMotor(1,10)
-    # sleep(1)
-    # arduino.runMotor(1,0)
+    # arduino.RunServo(1,180)
+    # sleep(3)
+    # arduino.runMotor(3,40)
 
+    lidar.print()
 
-    arduino.RunServo(1,180)
-    sleep(3)
-    arduino.runMotor(3,40)
+    arduino.runMotor(3,80)
+    sleep(1)
     arduino.RunForward(120)
-    while(not arduino.CheckEnc()): pass
+    while(not arduino.LastCommandIsEnd()): pass
     arduino.runMotor(3,0)
-    arduino.RunServo(1,90)
-    arduino.TurnRight(180)
-    arduino.RunForward(120)
+
+    lidar.print()
 
 # CAMERA TEST
 
@@ -52,12 +80,13 @@ def main():
 if __name__=="__main__":
     try: main()
     except Exception as e: print(e)
-    arduino.RunServo(1,90)
-    arduino.RunServo(2,90)
-    arduino.runMotor(1,0)
-    arduino.runMotor(2,0)
-    arduino.runMotor(3,0)
-    arduino.runMotor(4,0)
-    arduino.runMotor(4,0)
-    arduino.enable = 0
-    arduino.write("e 1 1",ignore_enable=1)
+    # arduino.RunServo(1,90)
+    # arduino.RunServo(2,90)
+    # arduino.runMotor(1,0)
+    # arduino.runMotor(2,0)
+    # arduino.runMotor(3,0)
+    # arduino.runMotor(4,0)
+    # arduino.runMotor(4,0)
+    # arduino.enable = 0
+    # arduino.write("e 1 1",ignore_enable=1)
+    pass
