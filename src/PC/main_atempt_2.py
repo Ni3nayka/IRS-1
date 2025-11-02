@@ -20,7 +20,6 @@ from arduinoDriver import ArduinoDriver
 from videoHttpStreamer import VideoHttpStreamer
 # from cameraDriver import Camera
 from time import sleep
-
 arduino = ArduinoDriver("/dev/ttyUSB0") # "/dev/ttyACM0") # дописать отключение порта arduino.start()
 
 from lidar_client import Lidar
@@ -35,21 +34,32 @@ def main():
     print("battery (raspberry):", arduino.voltage[1])
     print("battery (arduino):", arduino.voltage[0])
 
-    lidar.print()
+    # ровняемся на первую трубу
+    arduino.TurnLeft(90, wait_end=True)
+    arduino.RunForward(25, wait_end=True)
+    arduino.TurnRight(97, wait_end=True)
 
     # стартуем, не прям со старта, а сразу со смещением
-    arduino.runMotor(3,80)
+    arduino.runMotor(3,100)
     sleep(1)
-    arduino.RunForward(120, wait_end=True)
-    arduino_wait()
+    arduino.RunForward(135, wait_end=True)
+    # arduino.runMotor(3,0)
+    # в теории прочистили половину 1ой трубы, объезжаем ее
+    print(lidar.wall_angles[3])
+    arduino.TurnRight(90-lidar.wall_angles[3], wait_end=True)
+    arduino.RunForward(43, wait_end=True)
+    # чистим с другой стороны
+    sleep(1)
+    arduino.TurnRight(90, wait_end=True)
+    arduino.runMotor(3,100)
+    arduino.RunForward(135, wait_end=True)
     arduino.runMotor(3,0)
-    # в теории прочистили половину 1ой трубы
-    arduino.TurnRight(90+lidar.wall_angles[3], wait_end=True)
-    arduino.RunForward(50-lidar.wall_dist[2], wait_end=True)
-
-    lidar.print()
+    # становимся на старт
+    arduino.TurnRight(90, wait_end=True)
+    arduino.RunForward(31, wait_end=True)
 
 if __name__=="__main__":
-    try: main()
-    except Exception as e: print(e)
+    main()
+    # try: main()
+    # except Exception as e: print(e)
     pass
