@@ -10,6 +10,9 @@
 #include <Robot_L298P.h>  // Библиотека для моторов
 #include "myServo.h"      // Библиотека для сервоприводов
 
+#include "serialParser.h"
+long int gy25_lastPrintTime = 0;
+
 #define MOTOR_MOSFET_PIN A0
 // #define MOTOR_MOSFET_SPEED 200
 
@@ -34,7 +37,7 @@ const uint8_t servoCount = sizeof(servoPins) / sizeof(servoPins[0]);
 */ 
 #define ENC_BETWEEN_ERROR_RIGHT_K 1.0075
 
-#define ENC_ANGLE_TO_PARROT 7.43 //8.88
+#define ENC_ANGLE_TO_PARROT 12 //8.88
 #define ENC_CM_TO_PARROT 64.5
 
 #define ENC_MOTOR_MAX_SPEED 70
@@ -65,6 +68,15 @@ void runEnc(long int forward = 0, long int right_angle = 0, int max_speed=ENC_MO
   long int e_a_old = 0, e_b_old = 0;
   long int i_d = 0;
   while (time>millis()) {
+    // serial
+		SerialData data = readSerialData();
+  	if (data.mode != '\0') {
+			if      (data.mode=='S' && data.data_counter==0) break;
+			//else if (data.mode=='e' && data.data_counter==1) serial_e_for_gyro = data.data_1;
+			else if (data.mode=='g' && data.data_counter==0) sendDataToSerial();
+			else Serial.println("ERROR: unknow command");
+		}
+    // dfgthyjkl
     if ((abs(Robot.enc_A-enc_a_target)>ENC_POROG) || abs(Robot.enc_B-enc_b_target)>ENC_POROG) {
       time = millis()+ENC_TIME;
     }
@@ -137,154 +149,14 @@ void setup() {
   for (int i = 0; i < servoCount; i++) {
     ServoController.servoWrite(i, 90);
   }
-  pinMode(MOTOR_MOSFET_PIN,OUTPUT);
-  Serial.println("Система готова. Форматы команд:");
-  Serial.println("Моторы: m ЛЕВЫЙ_МОТОР ПРАВЫЙ_МОТОР");
-  Serial.println("Сервы: s НОМЕР_СЕРВЫ УГОЛ");
-  Serial.println("Энкодеры: e 0 0 - обнулить 1 1 - запросить");
-  Serial.println("Движение по энкодерам: E 0 0 - forward right");
-  
-  // Robot.motors(20, 0);
-  // delay(1000);
-  // Robot.motors(0, 0);
-
-  // runEnc(0,360);
-  // delay(2000);
-  // runEnc(0,-360);
-
-  // runEnc(50);
-
   // delay(3000);
-
-  // for (int i = 0; i<8; i++) {
-  //   runEnc(80);
-  //   // delay(1000);
-  //   runEnc(0,90);
-  //   // delay(1000);
-  // }
-
-  // runEnc(100);
-  // delay(1000);
-  // runEnc(0,180);
-  // delay(1000);
-  // runEnc(100);
-  // delay(1000);
-  // runEnc(0,-180);
-  // delay(1000);
-
-  delay(3000);
-  test();
-  digitalWrite(MOTOR_MOSFET_PIN, 0);
+  // test();
   Robot.motors(0, 0);
 }
 
 void loop() {
-
-  // if (debug_time<millis()) {
-  //   Serial.print(Robot.enc_A);
-  //   Serial.print(" ");
-  //   Serial.println(Robot.enc_B);
-  //   debug_time = millis()+500;
-  // }
-
-  if (Serial.available() > 0) {
-    String input = Serial.readStringUntil('\n');
-    input.trim();
-    
-    // Разделяем команду на части
-    int firstSpace = input.indexOf(' ');
-    if (firstSpace != -1) {
-      String command = input.substring(0, firstSpace);
-      String args = input.substring(firstSpace + 1);
-      args.trim();
-      
-      // Обработка команды для моторов
-      if (command == "m") {
-        int secondSpace = args.indexOf(' ');
-        if (secondSpace != -1) {
-          String leftStr = args.substring(0, secondSpace);
-          String rightStr = args.substring(secondSpace + 1);
-          
-          int leftSpeed = leftStr.toInt();
-          int rightSpeed = rightStr.toInt();
-          
-          Robot.motors(leftSpeed, rightSpeed);
-          
-          Serial.print("Моторы: Левый = ");
-          Serial.print(leftSpeed);
-          Serial.print(", Правый = ");
-          Serial.println(rightSpeed);
-        }
-      }
-      // Обработка команды для сервоприводов
-      else if (command == "s") {
-        int secondSpace = args.indexOf(' ');
-        if (secondSpace != -1) {
-          String servoNumStr = args.substring(0, secondSpace);
-          String angleStr = args.substring(secondSpace + 1);
-          
-          int servoNum = servoNumStr.toInt() - 1;  // Нумерация с 1
-          int angle = angleStr.toInt();
-          
-          if (servoNum >= 0 && servoNum < servoCount) {
-            ServoController.servoWrite(servoNum, angle);
-            Serial.print("Серва ");
-            Serial.print(servoNum + 1);
-            Serial.print(": Угол = ");
-            Serial.println(angle);
-          } else {
-            Serial.print("Ошибка: Недопустимый номер сервы (1-");
-            Serial.print(servoCount);
-            Serial.println(")");
-          }
-        }
-      }
-      else if (command == "e") { // опросить энкодеры - Тут короче лютейший говнокод, ибо время
-        int secondSpace = args.indexOf(' ');
-        if (secondSpace != -1) {
-          String servoNumStr = args.substring(0, secondSpace);
-          String angleStr = args.substring(secondSpace + 1);
-          
-          int servoNum = servoNumStr.toInt();  // Нумерация с 1
-          int angle = angleStr.toInt();
-          
-          if (angle==0 && servoNum==0) {
-            Robot.enc_A = 0;
-            Robot.enc_B = 0;
-            Serial.println("Энкодеры обнулены");
-          } else {
-            Serial.println("Показания энкодеров:");
-            Serial.println(Robot.enc_A); // Энкодеры перепутаны местами
-            Serial.println(Robot.enc_B);
-          }
-        }
-      }
-      else if (command == "E") { // запустить робота по энкодерам - Тут короче лютейший говнокод, ибо время
-        // метода - E f r
-        // где f - вперед (или назад, если значение отрицательное) - в см
-        // r - вправо (или влево, если значение отрицательное) - в градусах
-        int secondSpace = args.indexOf(' ');
-        if (secondSpace != -1) {
-          String servoNumStr = args.substring(0, secondSpace);
-          String angleStr = args.substring(secondSpace + 1);
-          
-          int forward = servoNumStr.toInt();  // Нумерация с 1
-          int right = angleStr.toInt();
-
-          Serial.println("Едем по энкодерам");
-          runEnc(forward, right);
-          Serial.println("Доехали по энкодерам &"); // & - символ, чтобы детектить его в выводе на компе
-        }
-      }
-      else {
-        Serial.println("Ошибка: Неизвестная команда. Используйте 'm' или 's' или 'e' или 'E'");
-      }
-    }
-    else {
-      Serial.println("Ошибка: Неверный формат команды");
-    }
-  }
-  
+  serialDataParser();
+  // serialDebugEncAndGyro();
   // Обновление состояния сервоприводов
   ServoController.servoUpdate();
 }
@@ -299,4 +171,60 @@ void test() {
   // forward(100,SLOW); 
   // right(90);
   // right(720);
+}
+
+
+// ================== SERIAL ===============================================
+
+void serialDebugEncAndGyro() { 
+  // Выводим данные раз в 100 мс, не мешая вводу
+  if (millis() - gy25_lastPrintTime >= 100) {
+    gy25_lastPrintTime = millis();
+    Serial.println("GY25 horizontal_angle: 0");
+    // Serial.print(gy25.horizontal_angle);
+    Serial.print("  ENC1: ");
+    Serial.print(Robot.enc_A);
+    Serial.print("  ENC2: ");
+    Serial.print(Robot.enc_B);
+    // testEnc();
+    Serial.println();
+  }
+}
+
+void sendDataToSerial() {
+  Serial.println();
+  Serial.println("GY25: 0 0 0 0");
+  Serial.print("ENC: ");
+  Serial.print(Robot.enc_A);
+  Serial.print(" ");
+  Serial.println(Robot.enc_B);
+  Serial.println("VOLTAGE: 0 0");
+}
+
+void serialDataParser() {
+  // Вызываем функцию достаточно часто
+  SerialData data = readSerialData();
+  
+  // Если получены данные, обрабатываем их
+  if (data.mode != '\0') {
+    // Serial.print("Режим: ");
+    // Serial.println(data.mode);
+    // Serial.print("Данные 1: ");
+    // Serial.println(data.data_1);
+    // Serial.print("Данные 2: ");
+    // Serial.println(data.data_2);
+    // Serial.print("Количество чисел: ");
+    // Serial.println(data.data_counter);
+    // Serial.println("---");
+    if      (data.mode=='m' && data.data_counter==2 && data.data_1==1) Robot.motor_A(data.data_2);
+    if      (data.mode=='m' && data.data_counter==2 && data.data_1==2) Robot.motor_B(data.data_2);
+    else if (data.mode=='M' && data.data_counter==2) Robot.motors(data.data_1, data.data_2);
+    else if (data.mode=='F' && data.data_counter==1) forward(data.data_1);
+    else if (data.mode=='R' && data.data_counter==1) right(data.data_1);
+    else if (data.mode=='L' && data.data_counter==1) left(data.data_1);
+    else if (data.mode=='g' && data.data_counter==0) sendDataToSerial();
+    else Serial.println("ERROR: unknow command");
+  }
+  
+  //delay(100); // Небольшая задержка между опросами
 }
